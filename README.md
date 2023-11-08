@@ -29,4 +29,4 @@ Here is an overview of the main features:
 
 ## Documentation
 
-For details on how to install and use *django-eveuniverse* please see the [documentation](https://django-eveuniverse.readthedocs.io/en/latest/).
+For details on how to install and use *django-eveuniverse* please see [Operations Guide](https://django-eveuniverse.readthedocs.io/en/latest/operations.html#installation).
