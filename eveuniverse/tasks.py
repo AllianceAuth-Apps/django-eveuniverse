@@ -305,22 +305,22 @@ def load_eve_types(
 def update_market_prices(minutes_until_stale: Optional[int] = None):
     """Updates market prices from ESI."""
     chain(
-        fetch_market_prices_esi.s().set(priority=EVEUNIVERSE_LOAD_TASKS_PRIORITY),
-        update_market_prices_from_data.s(minutes_until_stale).set(
+        _fetch_market_prices_esi.s().set(priority=EVEUNIVERSE_LOAD_TASKS_PRIORITY),
+        _update_market_prices_from_data.s(minutes_until_stale).set(
             priority=EVEUNIVERSE_LOAD_TASKS_PRIORITY
         ),
     ).delay()
 
 
 @shared_task(**_TASK_ESI_DEFAULTS_ONCE)
-def fetch_market_prices_esi():
+def _fetch_market_prices_esi():
     """Fetch market prices from ESI."""
     prices = EveMarketPrice.objects.fetch_data_from_esi()  # type: ignore
     return prices
 
 
 @shared_task(**_TASK_DEFAULTS)
-def update_market_prices_from_data(
+def _update_market_prices_from_data(
     prices: dict, minutes_until_stale: Optional[int] = None
 ):
     """Updates market prices from provided data."""
