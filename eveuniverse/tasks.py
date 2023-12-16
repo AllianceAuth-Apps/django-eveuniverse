@@ -325,6 +325,6 @@ def update_market_prices_from_data(
 ):
     """Updates market prices from provided data."""
     if not prices:
-        return 0
+        return
 
     EveMarketPrice.objects.update_objs_from_esi_data(prices, minutes_until_stale)  # type: ignore
