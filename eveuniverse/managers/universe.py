@@ -532,24 +532,30 @@ class EveMarketPriceManager(models.Manager):
     ) -> int:
         """Update prices from provided ESI data."""
         prices_2 = {int(obj["type_id"]): obj for obj in prices if "type_id" in obj}
-        types_need_updating = self._identify_types_to_update(
+        to_update, to_delete = self._identify_types_to_update(
             prices_2, minutes_until_stale
         )
-        if not types_need_updating:
+        if to_delete:
+            self._delete_objs(to_delete)
+
+        if not to_update:
             logger.info("Market prices are up to date")
             return 0
 
-        updated_types = self._update_objs(prices_2, types_need_updating)
-        self._create_new_objs(prices_2, types_need_updating, updated_types)
-        return len(types_need_updating)
+        types_to_create = self._update_objs(prices_2, to_update)
+        if types_to_create:
+            self._create_new_objs(prices_2, types_to_create)
+
+        return len(to_update)
 
     def _identify_types_to_update(
         self, prices, minutes_until_stale: Optional[int]
-    ) -> Set[int]:
+    ) -> Tuple[Set[int]]:
         from eveuniverse.models import EveType
 
         existing_types = set(EveType.objects.values_list("id", flat=True))
-        relevant_types = set(prices.keys()).intersection(existing_types)
+        incoming_prices = set(prices.keys())
+        relevant_types = incoming_prices.intersection(existing_types)
         minutes_until_stale = (
             self.model.DEFAULT_MINUTES_UNTIL_STALE
             if minutes_until_stale is None
@@ -561,8 +567,14 @@ class EveMarketPriceManager(models.Manager):
                 "eve_type_id", flat=True
             )
         )
-        types_need_updating = relevant_types.difference(prices_not_stale)
-        return types_need_updating
+        types_to_update = relevant_types.difference(prices_not_stale)
+        existing_prices = set(self.values_list("eve_type_id", flat=True))
+        types_to_delete = existing_prices - incoming_prices
+        return types_to_update, types_to_delete
+
+    def _delete_objs(self, to_delete):
+        self.filter(eve_type_id__in=to_delete).delete()
+        logger.info("Deleted %d obsolete market prices", len(to_delete))
 
     def _update_objs(self, prices: dict, types_need_updating: Set[int]) -> Set[int]:
         existing_prices_query = self.filter(eve_type_id__in=types_need_updating)
@@ -579,14 +591,12 @@ class EveMarketPriceManager(models.Manager):
             batch_size=EVEUNIVERSE_BULK_METHODS_BATCH_SIZE,
         )
         logger.info("Updated market prices for %d types...", len(objs))
-        return {obj.eve_type_id for obj in objs}
+        updated_types = {obj.eve_type_id for obj in objs}
+        return types_need_updating - updated_types
 
-    def _create_new_objs(
-        self, prices: dict, types_need_updating: Set[int], updated_types: Set[int]
-    ):
+    def _create_new_objs(self, prices: dict, types_to_create: Set[int]):
         from eveuniverse.models import EveType
 
-        new_types = types_need_updating - updated_types
         objs = [
             self.model(
                 eve_type=get_or_create_esi_or_none("type_id", entry, EveType),
@@ -594,7 +604,7 @@ class EveMarketPriceManager(models.Manager):
                 average_price=entry.get("average_price"),
             )
             for type_id, entry in prices.items()
-            if type_id in new_types
+            if type_id in types_to_create
         ]
         self.bulk_create(objs, batch_size=EVEUNIVERSE_BULK_METHODS_BATCH_SIZE)
         logger.info("Create new prices for %s types.", len(objs))
