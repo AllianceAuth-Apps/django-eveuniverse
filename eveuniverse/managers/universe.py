@@ -4,10 +4,10 @@
 import datetime as dt
 import logging
 from collections import namedtuple
-from typing import Any, Dict, Iterable, Optional, Tuple
+from typing import Any, Dict, Iterable, Optional, Set, Tuple
 
 from bravado.exception import HTTPNotFound
-from django.db import models, transaction
+from django.db import models
 from django.utils.timezone import now
 
 from eveuniverse import __title__
@@ -513,51 +513,88 @@ class EveMarketPriceManager(models.Manager):
         Returns:
             Count of updated types
         """
+
+        prices = self.fetch_data_from_esi()
+        if not prices:
+            return 0
+
+        updated_count = self.update_objs_from_esi_data(prices, minutes_until_stale)
+        return updated_count
+
+    def fetch_data_from_esi(self) -> Dict[int, dict]:
+        """Fetch market prices from ESI and return them."""
+        entries = esi.client.Market.get_markets_prices().results()
+        logger.info("Received %d market prices from ESI", len(entries))
+        entries_2 = {int(obj["type_id"]): obj for obj in entries if "type_id" in obj}
+        return entries_2
+
+    def update_objs_from_esi_data(
+        self, prices: Dict[int, dict], minutes_until_stale: Optional[int] = None
+    ) -> int:
+        """Update prices from provided ESI data."""
+        types_need_updating = self._identify_types_to_update(
+            prices, minutes_until_stale
+        )
+        if not types_need_updating:
+            logger.info("Market prices are up to date")
+            return 0
+
+        updated_types = self._update_objs(prices, types_need_updating)
+        self._create_new_objs(prices, types_need_updating, updated_types)
+        return len(types_need_updating)
+
+    def _identify_types_to_update(
+        self, prices, minutes_until_stale: Optional[int]
+    ) -> Set[int]:
         from eveuniverse.models import EveType
 
+        existing_types = set(EveType.objects.values_list("id", flat=True))
+        relevant_types = set(prices.keys()).intersection(existing_types)
         minutes_until_stale = (
             self.model.DEFAULT_MINUTES_UNTIL_STALE
             if minutes_until_stale is None
             else minutes_until_stale
         )
+        stale_deadline = now() - dt.timedelta(minutes=minutes_until_stale)
+        prices_not_stale = set(
+            self.filter(updated_at__gt=stale_deadline).values_list(
+                "eve_type_id", flat=True
+            )
+        )
+        types_need_updating = relevant_types.difference(prices_not_stale)
+        return types_need_updating
 
-        logger.info("Fetching market prices from ESI...")
-        entries = esi.client.Market.get_markets_prices().results()
-        if not entries:
-            return 0
+    def _update_objs(self, prices: dict, types_need_updating: Set[int]) -> Set[int]:
+        existing_prices_query = self.filter(eve_type_id__in=types_need_updating)
+        objs = existing_prices_query.in_bulk().values()
+        for obj in objs:
+            entry = prices[obj.eve_type_id]
+            obj.adjusted_price = entry.get("adjusted_price")
+            obj.average_price = entry.get("average_price")
+            obj.updated_at = now()
 
-        entries_2 = {int(x["type_id"]): x for x in entries if "type_id" in x}
-        with transaction.atomic():
-            existing_types_ids = set(EveType.objects.values_list("id", flat=True))
-            relevant_prices_ids = set(entries_2.keys()).intersection(existing_types_ids)
-            deadline = now() - dt.timedelta(minutes=minutes_until_stale)
-            current_prices_ids = set(
-                self.filter(updated_at__gt=deadline).values_list(
-                    "eve_type_id", flat=True
-                )
-            )
-            need_updating_ids = relevant_prices_ids.difference(current_prices_ids)
-            if not need_updating_ids:
-                logger.info("Market prices are up to date")
-                return 0
+        self.bulk_update(
+            objs,
+            fields=["adjusted_price", "average_price", "updated_at"],
+            batch_size=EVEUNIVERSE_BULK_METHODS_BATCH_SIZE,
+        )
+        logger.info("Updated market prices for %d types...", len(objs))
+        return {obj.eve_type_id for obj in objs}
 
-            logger.info(
-                "Updating market prices for %s types...", len(need_updating_ids)
+    def _create_new_objs(
+        self, prices: dict, types_need_updating: Set[int], updated_types: Set[int]
+    ):
+        from eveuniverse.models import EveType
+
+        new_types = types_need_updating - updated_types
+        objs = [
+            self.model(
+                eve_type=get_or_create_esi_or_none("type_id", entry, EveType),
+                adjusted_price=entry.get("adjusted_price"),
+                average_price=entry.get("average_price"),
             )
-            self.filter(eve_type_id__in=need_updating_ids).delete()
-            market_prices = [
-                self.model(
-                    eve_type=get_or_create_esi_or_none("type_id", entry, EveType),
-                    adjusted_price=entry.get("adjusted_price"),
-                    average_price=entry.get("average_price"),
-                )
-                for type_id, entry in entries_2.items()
-                if type_id in need_updating_ids
-            ]
-            self.bulk_create(
-                market_prices, batch_size=EVEUNIVERSE_BULK_METHODS_BATCH_SIZE
-            )
-            logger.info(
-                "Completed updating market prices for %s types.", len(need_updating_ids)
-            )
-            return len(market_prices)
+            for type_id, entry in prices.items()
+            if type_id in new_types
+        ]
+        self.bulk_create(objs, batch_size=EVEUNIVERSE_BULK_METHODS_BATCH_SIZE)
+        logger.info("Create new prices for %s types.", len(objs))
