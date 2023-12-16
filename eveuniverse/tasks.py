@@ -3,7 +3,7 @@
 import logging
 from typing import Iterable, List, Optional
 
-from celery import shared_task
+from celery import chain, shared_task
 from celery_once import QueueOnce as BaseQueueOnce
 from django.db.utils import OperationalError
 
@@ -34,7 +34,7 @@ _TASK_DEFAULTS = {"time_limit": EVEUNIVERSE_TASKS_TIME_LIMIT}
 _TASK_ESI_DEFAULTS = {
     **_TASK_DEFAULTS,
     **{
-        "autoretry_for": [OperationalError],
+        "autoretry_for": [OperationalError],  # TODO: Double-check: Correct exception?
         "retry_kwargs": {"max_retries": 3},
         "retry_backoff": True,
     },
@@ -303,6 +303,28 @@ def load_eve_types(
 
 @shared_task(**_TASK_ESI_DEFAULTS_ONCE)
 def update_market_prices(minutes_until_stale: Optional[int] = None):
-    """Updates market prices from ESI.
-    see EveMarketPrice.objects.update_from_esi() for details"""
-    EveMarketPrice.objects.update_from_esi(minutes_until_stale)  # type: ignore
+    """Updates market prices from ESI."""
+    chain(
+        _fetch_market_prices_esi.s().set(priority=EVEUNIVERSE_LOAD_TASKS_PRIORITY),
+        _update_market_prices_from_data.s(minutes_until_stale).set(
+            priority=EVEUNIVERSE_LOAD_TASKS_PRIORITY
+        ),
+    ).delay()
+
+
+@shared_task(**_TASK_ESI_DEFAULTS_ONCE)
+def _fetch_market_prices_esi():
+    """Fetch market prices from ESI."""
+    prices = EveMarketPrice.objects.fetch_data_from_esi()  # type: ignore
+    return prices
+
+
+@shared_task(**_TASK_DEFAULTS)
+def _update_market_prices_from_data(
+    prices: dict, minutes_until_stale: Optional[int] = None
+):
+    """Updates market prices from provided data."""
+    if not prices:
+        return
+
+    EveMarketPrice.objects.update_objs_from_esi_data(prices, minutes_until_stale)  # type: ignore

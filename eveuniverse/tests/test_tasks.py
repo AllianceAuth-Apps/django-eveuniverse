@@ -100,11 +100,6 @@ class TestTasks(NoSocketsTestCase):
         self.assertEqual(obj.name, "Wayne Technologies")
         self.assertEqual(obj.category, EveEntity.CATEGORY_CORPORATION)
 
-    @patch(TASKS_PATH + ".EveMarketPrice.objects.update_from_esi")
-    def test_update_market_prices(self, mock_update_from_esi):
-        update_market_prices()
-        self.assertTrue(mock_update_from_esi.called)
-
 
 @override_settings(CELERY_ALWAYS_EAGER=True, CELERY_EAGER_PROPAGATES_EXCEPTIONS=True)
 @patch(MANAGERS_PATH + ".entities.esi")
@@ -226,3 +221,30 @@ class TestLoadEveTypes(TestCase):
         self.assertTrue(EveCategory.objects.filter(id=EveCategoryId.STRUCTURE).exists())
         self.assertTrue(EveGroup.objects.filter(id=EveGroupId.PLANET).exists())
         self.assertTrue(EveType.objects.filter(id=603).exists())
+
+
+@override_settings(CELERY_ALWAYS_EAGER=True, CELERY_EAGER_PROPAGATES_EXCEPTIONS=True)
+@patch(TASKS_PATH + ".EveMarketPrice.objects.update_objs_from_esi_data", spec=True)
+@patch(TASKS_PATH + ".EveMarketPrice.objects.fetch_data_from_esi", spec=True)
+class TestUpdateMarketPrices(TestCase):
+    def test_should_update_market_prices_when_there_is_data(
+        self, mock_fetch, mock_update
+    ):
+        # given
+        mock_fetch.return_value = [1]
+        # when
+        update_market_prices.delay()
+        # then
+        self.assertTrue(mock_fetch.called)
+        self.assertTrue(mock_update.called)
+
+    def test_should_not_update_market_prices_when_no_data(
+        self, mock_fetch, mock_update
+    ):
+        # given
+        mock_fetch.return_value = []
+        # when
+        update_market_prices.delay()
+        # then
+        self.assertTrue(mock_fetch.called)
+        self.assertFalse(mock_update.called)
