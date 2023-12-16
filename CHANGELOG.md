@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased] - yyyy-mm-dd
 
+## [1.5.4] - 2023-12-16
+
+### Changed
+
+- Improve logic for updating market prices
+- Split original long running task into two smaller tasks
+
 ## [1.5.3] - 2023-10-08
 
 ### Changed

@@ -4,7 +4,7 @@
 import datetime as dt
 import logging
 from collections import namedtuple
-from typing import Any, Dict, Iterable, Optional, Set, Tuple
+from typing import Any, Dict, Iterable, List, Optional, Set, Tuple
 
 from bravado.exception import HTTPNotFound
 from django.db import models
@@ -525,22 +525,22 @@ class EveMarketPriceManager(models.Manager):
         """Fetch market prices from ESI and return them."""
         entries = esi.client.Market.get_markets_prices().results()
         logger.info("Received %d market prices from ESI", len(entries))
-        entries_2 = {int(obj["type_id"]): obj for obj in entries if "type_id" in obj}
-        return entries_2
+        return entries
 
     def update_objs_from_esi_data(
-        self, prices: Dict[int, dict], minutes_until_stale: Optional[int] = None
+        self, prices: List[dict], minutes_until_stale: Optional[int] = None
     ) -> int:
         """Update prices from provided ESI data."""
+        prices_2 = {int(obj["type_id"]): obj for obj in prices if "type_id" in obj}
         types_need_updating = self._identify_types_to_update(
-            prices, minutes_until_stale
+            prices_2, minutes_until_stale
         )
         if not types_need_updating:
             logger.info("Market prices are up to date")
             return 0
 
-        updated_types = self._update_objs(prices, types_need_updating)
-        self._create_new_objs(prices, types_need_updating, updated_types)
+        updated_types = self._update_objs(prices_2, types_need_updating)
+        self._create_new_objs(prices_2, types_need_updating, updated_types)
         return len(types_need_updating)
 
     def _identify_types_to_update(
