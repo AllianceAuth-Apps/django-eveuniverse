@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased] - yyyy-mm-dd
 
+## [1.5.5] - 2024-07-10
+
+### Fixed
+
+- Autocomplete fields on admin page of other apps referring EveCategory, EveGroup or EveType did not contain unpublished objects, because they where filtered out prematurely in eveuniverse admin. For example tracker clauses in Killtracker.
+
 ## [1.5.4] - 2023-12-16
 
 ### Changed

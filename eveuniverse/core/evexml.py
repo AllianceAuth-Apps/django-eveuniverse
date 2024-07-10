@@ -1,4 +1,5 @@
 """Tools for dealing with eve data in XML."""
+
 import re
 import unicodedata
 
