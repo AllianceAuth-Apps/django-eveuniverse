@@ -1,6 +1,5 @@
 """Managers and Querysets for Eve universe models."""
 
-
 import datetime as dt
 import logging
 from collections import namedtuple
