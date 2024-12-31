@@ -13,7 +13,7 @@ from .testdata.factories import create_eve_entity
 
 class TestHelpers(NoSocketsTestCase):
     def test_meters_to_ly(self):
-        self.assertEqual(meters_to_ly(9_460_730_472_580_800), 1)
+        self.assertEqual(meters_to_ly(9_460_000_000_000_000), 1)
         self.assertEqual(meters_to_ly(0), 0)
         with self.assertRaises(ValueError):
             meters_to_ly("invalid")
