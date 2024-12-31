@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased] - yyyy-mm-dd
 
+## [1.5.6] - 2024-12-31
+
+### Fixed
+
+- CCP Lightyear != Lightyear (#16)
+- Some Low Security returned as Nullsec, Inconsistent CCP Rounding (#20)
+- XML conversion sometimes fails with TypeError (#21)
+
 ## [1.5.5] - 2024-07-10
 
 ### Fixed
