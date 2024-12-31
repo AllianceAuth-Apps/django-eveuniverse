@@ -1,5 +1,6 @@
 import datetime as dt
 import unittest
+from collections import namedtuple
 from unittest.mock import Mock, patch
 
 from bravado.exception import HTTPNotFound
@@ -32,6 +33,7 @@ from eveuniverse.models import (
     EveType,
 )
 from eveuniverse.tests.testdata.esi import BravadoOperationStub, EsiClientStub
+from eveuniverse.tests.testdata.factories_2 import EveSolarSystemFactory
 from eveuniverse.utils import NoSocketsTestCase
 
 unittest.util._MAX_LENGTH = 1000
@@ -856,6 +858,30 @@ class TestEveSolarSystem(NoSocketsTestCase):
 
         self.assertTrue(EveStation.objects.filter(id=60015068).exists())
 
+
+"""
+@patch(MODELS_PATH + ".EVEUNIVERSE_LOAD_STARGATES", True)
+@patch(MODELS_PATH + ".cache")
+def test_can_calculate_route(self, mock_cache, mock_esi):
+    def my_get_or_set(key, func, timeout):
+        return func()
+
+    mock_esi.client = EsiClientStub()
+    mock_cache.get.return_value = None
+    mock_cache.get_or_set.side_effect = my_get_or_set
+
+    enaluri, _ = EveSolarSystem.objects.get_or_create_esi(
+        id=30045339, include_children=True
+    )
+    akidagi, _ = EveSolarSystem.objects.get_or_create_esi(
+        id=30045342, include_children=True
+    )
+    self.assertEqual(enaluri.jumps_to(akidagi), 1)
+"""
+
+
+@patch(MANAGERS_PATH + ".esi")
+class TestEveSolarSystemsSpaceType(NoSocketsTestCase):
     def test_can_identify_highsec_system(self, mock_esi):
         mock_esi.client = EsiClientStub()
 
@@ -924,25 +950,25 @@ class TestEveSolarSystem(NoSocketsTestCase):
         self.assertFalse(solar_system.is_trig_space)
         self.assertTrue(solar_system.is_abyssal_deadspace)
 
-    """
-    @patch(MODELS_PATH + ".EVEUNIVERSE_LOAD_STARGATES", True)
-    @patch(MODELS_PATH + ".cache")
-    def test_can_calculate_route(self, mock_cache, mock_esi):
-        def my_get_or_set(key, func, timeout):
-            return func()
 
-        mock_esi.client = EsiClientStub()
-        mock_cache.get.return_value = None
-        mock_cache.get_or_set.side_effect = my_get_or_set
-
-        enaluri, _ = EveSolarSystem.objects.get_or_create_esi(
-            id=30045339, include_children=True
+class TestEveSolarSystemsSpaceType2(NoSocketsTestCase):
+    def test_all(self):
+        X = namedtuple(
+            "X", ["name", "security_status", "is_high_sec", "is_low_sec", "is_null_sec"]
         )
-        akidagi, _ = EveSolarSystem.objects.get_or_create_esi(
-            id=30045342, include_children=True
-        )
-        self.assertEqual(enaluri.jumps_to(akidagi), 1)
-    """
+        cases = [
+            X("high sec normal", 1.0, True, False, False),
+            X("low sec normal", 0.3, False, True, False),
+            X("null sec normal", -0.3, False, False, True),
+            X("low sec lower border", 0.049993, False, True, False),
+            X("low sec upper border", 0.0449, False, True, False),
+        ]
+        for tc in cases:
+            with self.subTest(name=tc.name):
+                system = EveSolarSystemFactory(security_status=tc.security_status)
+                self.assertIs(system.is_high_sec, tc.is_high_sec)
+                self.assertIs(system.is_low_sec, tc.is_low_sec)
+                self.assertIs(system.is_null_sec, tc.is_null_sec)
 
 
 @patch(MANAGERS_PATH + ".esi")
