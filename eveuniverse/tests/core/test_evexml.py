@@ -1,3 +1,4 @@
+from collections import namedtuple
 from unittest.mock import patch
 
 from eveuniverse.core import evexml
@@ -47,53 +48,71 @@ class TestEveXml(NoSocketsTestCase):
             name="Jita IV - Moon 4 - Caldari Navy Assembly Plant",
             category=EveEntity.CATEGORY_STATION,
         )
+        X = namedtuple("X", ["name", "input", "want"])
         my_tests = [
-            (
+            X(
                 "Alliance",
                 "showinfo:16159//3001",
                 "https://evemaps.dotlan.net/alliance/Wayne_Enterprises",
             ),
-            ("Character", "showinfo:1376//1001", "https://evewho.com/character/1001"),
-            (
+            X(
+                "Character",
+                "showinfo:1376//1001",
+                "https://evewho.com/character/1001",
+            ),
+            X(
                 "Corporation",
                 "showinfo:2//2001",
                 "https://evemaps.dotlan.net/corp/Wayne_Technologies",
             ),
-            (
+            X(
                 "Killmail",
                 "killReport:84900666:9e6fe9e5392ff0cfc6ab956677dbe1deb69c4b04",
                 "https://zkillboard.com/kill/84900666/",
             ),
-            (
+            X(
                 "Solar System",
                 "showinfo:5//30004984",
                 "https://evemaps.dotlan.net/system/Abune",
             ),
-            (
+            X(
                 "Station",
                 "showinfo:52678//60003760",
                 "https://evemaps.dotlan.net/station/Jita_IV_-_Moon_4_-_Caldari_Navy_Assembly_Plant",
             ),
-            (
+            X(
                 "Inventory Type",
                 "showinfo:603",
                 "https://www.kalkoken.org/apps/eveitems/?typeId=603",
             ),
-            ("Valid URL", "https://www.example.com", "https://www.example.com"),
-            (
+            X(
+                "Valid URL",
+                "https://www.example.com",
+                "https://www.example.com",
+            ),
+            X(
                 "Not support eve link 1",
                 "fitting:11987:2048;1:1952;1:26914;2:31366;1:16487;2:31059;1:19057;2:18867;1:18710;1:18871;1:12058;1:31900;1:41155;1::",
                 "",
             ),
-            (
+            X(
                 "Not support eve link 2",
                 "hyperNet:9ff5fa81-942e-49c2-9469-623b2abcb05d",
                 "",
             ),
-            ("Invalid URL", "not-valid", ""),
-            (
-                "Unsuported eve links",
+            X(
+                "Invalid URL",
+                "not-valid",
+                "",
+            ),
+            X(
+                "Unsupported eve links",
                 'showinfo:35825//1000000000001">Amamake - Test Structure Alpha',
+                "",
+            ),
+            X(
+                "incomplete",
+                "showinfo:52678//",
                 "",
             ),
         ]
@@ -114,6 +133,6 @@ class TestEveXml(NoSocketsTestCase):
         ), patch(
             MODEL_PATH + ".EVEUNIVERSE_LOAD_TYPE_MATERIALS", False
         ):
-            for test, input, expected in my_tests:
-                with self.subTest(test=test):
-                    self.assertEqual(evexml.eve_link_to_url(input), expected)
+            for tc in my_tests:
+                with self.subTest(test=tc.name):
+                    self.assertEqual(evexml.eve_link_to_url(tc.input), tc.want)

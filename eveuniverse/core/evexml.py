@@ -22,6 +22,9 @@ def eve_link_to_url(link: str) -> str:
 
     Returns:
         Converted URL or an empty string if the link was invalid or not supported
+
+    Exceptions:
+        The function will try to fetch entities from ESI and may throw an OSError or HTTPError.
     """
     if is_url(link):
         return link
@@ -39,32 +42,30 @@ def eve_link_to_url(link: str) -> str:
 
 
 def _convert_type_link(showinfo_match: re.Match) -> str:
-    if showinfo_match:
-        type_id = int(showinfo_match.group("type_id"))
-        eve_type, _ = EveType.objects.get_or_create_esi(id=type_id)
-        if eve_type.eve_group.eve_category_id == EveCategoryId.STRUCTURE:
-            return ""
-        if eve_type.eve_group_id in {
-            EveGroupId.ALLIANCE.value,
-            EveGroupId.CHARACTER.value,
-            EveGroupId.CORPORATION.value,
-            EveGroupId.SOLAR_SYSTEM.value,
-            EveGroupId.STATION.value,
-        }:
-            entity_id = showinfo_match.group("entity_id")
-            eve_entity, _ = EveEntity.objects.get_or_create_esi(id=entity_id)
-            if eve_entity:
-                return eve_entity.profile_url
-        else:
-            return eve_type.profile_url
-    return ""
+    """Return converted link. Or an empty string if link could not be converted"""
+    type_id = int(showinfo_match.group("type_id"))
+    eve_type, _ = EveType.objects.get_or_create_esi(id=type_id)
+    if eve_type.eve_group.eve_category_id == EveCategoryId.STRUCTURE:
+        return ""
+    if eve_type.eve_group_id not in {
+        EveGroupId.ALLIANCE.value,
+        EveGroupId.CHARACTER.value,
+        EveGroupId.CORPORATION.value,
+        EveGroupId.SOLAR_SYSTEM.value,
+        EveGroupId.STATION.value,
+    }:
+        return eve_type.profile_url
+
+    entity_id = showinfo_match.group("entity_id")
+    if not entity_id:
+        return ""
+    eve_entity, _ = EveEntity.objects.get_or_create_esi(id=entity_id)
+    return eve_entity.profile_url
 
 
 def _convert_killmail_link(killreport_match: re.Match) -> str:
-    if killreport_match:
-        killmail_id = int(killreport_match.group("killmail_id"))
-        return zkillboard.killmail_url(killmail_id)
-    return ""
+    killmail_id = int(killreport_match.group("killmail_id"))
+    return zkillboard.killmail_url(killmail_id)
 
 
 def is_url(url_string: str) -> bool:
