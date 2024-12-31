@@ -6,10 +6,14 @@ from typing import Any, Dict, Optional
 
 from django.db import models
 
+# CCP uses a non-standard factor to calculate light years
+# See also: https://gitlab.com/ErikKalkoken/django-eveuniverse/-/issues/16
+METERS_PER_LY = 9_460_000_000_000_000
+
 
 def meters_to_ly(value: float) -> Optional[float]:
     """Convert meters into lightyears."""
-    return float(value) / 9_460_730_472_580_800 if value is not None else None
+    return float(value) / METERS_PER_LY if value is not None else None
 
 
 def meters_to_au(value: float) -> Optional[float]:

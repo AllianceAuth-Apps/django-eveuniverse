@@ -951,11 +951,11 @@ class TestEveSolarSystemDistanceTo(NoSocketsTestCase):
         # given
         mock_esi.client = EsiClientStub()
         enaluri, _ = EveSolarSystem.objects.get_or_create_esi(id=30045339)
-        akidagi, _ = EveSolarSystem.objects.get_or_create_esi(id=30045342)
+        abune, _ = EveSolarSystem.objects.get_or_create_esi(id=30004984)
         # when
-        result = enaluri.distance_to(akidagi)
+        result = enaluri.distance_to(abune)
         # then
-        self.assertEqual(meters_to_ly(result), 1.947802326920925)
+        self.assertEqual(round(meters_to_ly(result), 3), 6.831)
 
     def test_should_return_none_when_one_system_in_wh_space_1(self, mock_esi):
         # given

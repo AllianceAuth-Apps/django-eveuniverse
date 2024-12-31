@@ -293,7 +293,16 @@ class TestEveSolarSystemBulkWithSection(NoSocketsTestCase):
                     enabled_sections=EveSolarSystem.enabled_sections.planets
                 ).values_list("id", flat=True)
             ),
-            {30000142, 30001161, 30045339, 30045342, 31000005, 30000157, 32000018},
+            {
+                30000142,
+                30001161,
+                30045339,
+                30045342,
+                31000005,
+                30000157,
+                32000018,
+                30004984,
+            },
         )
         self.assertEqual(
             set(EvePlanet.objects.values_list("id", flat=True)),
@@ -312,13 +321,22 @@ class TestEveSolarSystemBulkWithSection(NoSocketsTestCase):
             include_children=True, enabled_sections=[EveSolarSystem.Section.PLANETS]
         )
         # then
-        self.assertEqual(
+        self.assertSetEqual(
             set(
                 EveSolarSystem.objects.filter(
                     enabled_sections=EveSolarSystem.enabled_sections.planets
                 ).values_list("id", flat=True)
             ),
-            {30000142, 30001161, 30045339, 30045342, 31000005, 30000157, 32000018},
+            {
+                30000142,
+                30001161,
+                30045339,
+                30045342,
+                31000005,
+                30000157,
+                32000018,
+                30004984,
+            },
         )
         self.assertEqual(
             set(EvePlanet.objects.values_list("id", flat=True)),

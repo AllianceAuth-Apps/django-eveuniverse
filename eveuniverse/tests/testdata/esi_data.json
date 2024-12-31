@@ -371,6 +371,19 @@
                     30001161
                 ]
             },
+            "20000729": {
+                "constellation_id": 20000729,
+                "name": "Jeon",
+                "position": {
+                    "x": -206907634827142820,
+                    "y": 48290879069679200,
+                    "z": 79609990006493180
+                },
+                "region_id": 10000064,
+                "systems": [
+                    30004984
+                ]
+            },
             "20000785": {
                 "constellation_id": 20000785,
                 "name": "Ishaga",
@@ -789,6 +802,14 @@
                 "name": "Catch",
                 "region_id": 10000014
             },
+            "10000064": {
+                "constellations": [
+                    20000729
+                ],
+                "description": "\"The Federation is not a defined region of space, of planets, of mountains, rivers, or woods. It is a vision.\"",
+                "name": "Essence",
+                "region_id": 10000064
+            },
             "10000069": {
                 "constellations": [
                     20000785
@@ -1030,6 +1051,7 @@
             30001161,
             30045339,
             30045342,
+            30004984,
             31000005
         ],
         "get_universe_systems_system_id": {
@@ -1141,6 +1163,19 @@
                     50016295
                 ],
                 "system_id": 30045342
+            },
+            "30004984": {
+                "constellation_id": 20000729,
+                "name": "Abune",
+                "position": {
+                    "x": -211265901041153470,
+                    "y": 55806528490315120,
+                    "z": 81416396747037220
+                },
+                "security_class": "D2",
+                "security_status": 0.28563404083251953,
+                "star_id": 40315574,
+                "system_id": 30004984
             },
             "31000005": {
                 "constellation_id": 21000324,
