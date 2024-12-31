@@ -63,6 +63,7 @@ disable = [
     "cyclic-import",
     "fixme",
     "too-many-arguments",
+    "too-many-positional-arguments",
     "redefined-builtin",
     "import-outside-toplevel",
     "duplicate-code",
