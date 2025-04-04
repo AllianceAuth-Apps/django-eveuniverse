@@ -74,9 +74,15 @@ def _fetch_items_from_endpoint_cached(
     result = cache.get(key=cache_key)
     if not result:
         url = f"{_BASE_URL}/universe/systems/{solar_system_id}/nearest_celestials"
-        logger.info("Sending request: %s", url)
         response = requests.get(
             url, params=params, timeout=EVEUNIVERSE_REQUESTS_DEFAULT_TIMEOUT
+        )
+        logger.debug(
+            "Response from evesdeapi: url %s, status %s, headers %s, content %s",
+            response.url,
+            response.status_code,
+            response.headers,
+            response.text,
         )
         response.raise_for_status()
         result = response.json()
