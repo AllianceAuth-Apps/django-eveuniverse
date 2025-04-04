@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased] - yyyy-mm-dd
 
+## [1.5.7] - 2025-04-04
+
+### Changed
+
+- Added debug logging when trying to resolve nearest celestials
+
 ## [1.5.6] - 2024-12-31
 
 ### Fixed

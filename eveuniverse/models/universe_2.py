@@ -2,6 +2,7 @@
 
 # pylint: disable = too-few-public-methods
 
+import logging
 import math
 import re
 from collections import namedtuple
@@ -24,6 +25,8 @@ from eveuniverse.providers import esi
 from .base import EveUniverseEntityModel, _SectionBase, determine_effective_sections
 from .entities import EveEntity
 from .universe_1 import EveType
+
+logger = logging.getLogger(__name__)
 
 
 class EveAsteroidBelt(EveUniverseEntityModel):
@@ -428,6 +431,7 @@ class EveSolarSystem(EveUniverseEntityModel):
 
         Raises:
             HTTPError: If an HTTP error is encountered
+            ValueError: If there is an semantic issue
 
         Returns:
             Eve item or None if none is found
@@ -449,11 +453,16 @@ class EveSolarSystem(EveUniverseEntityModel):
         try:
             my_class = class_mapping[eve_type.eve_group_id]
         except KeyError:
+            logger.debug(
+                "Nearest celestial returned from API has unexpected type ID: %d",
+                eve_type.id,
+            )
             return None
         obj, _ = my_class.objects.get_or_create_esi(id=item.id)
-        return self.NearestCelestial(
+        result = self.NearestCelestial(
             eve_type=eve_type, eve_object=obj, distance=item.distance
         )
+        return result
 
     @classmethod
     def _children(cls, enabled_sections: Optional[Set[str]] = None) -> dict:
