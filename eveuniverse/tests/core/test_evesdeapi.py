@@ -1,8 +1,8 @@
 import requests_mock
-from django.core.cache import cache
-from django.test import TestCase
 from requests.exceptions import HTTPError
 
+from django.core.cache import cache
+from django.test import TestCase
 from eveuniverse.constants import EveGroupId
 from eveuniverse.core import evesdeapi
 from eveuniverse.tests.testdata.factories import create_evesdeapi_response
@@ -103,3 +103,26 @@ class TestEveSdeApiNearestCelestial(TestCase):
         )
         # then
         self.assertEqual(result.id, 40170699)
+
+    def test_should_log_response_on_debug(self, requests_mocker):
+        # given
+        requests_mocker.register_uri(
+            "GET",
+            url=(
+                f"{self._BASE_URL}/universe/systems/30002682/nearest_celestials"
+                "?x=660502472160&y=-130687672800&z=-813545103840&group_id=8"
+            ),
+            json=create_evesdeapi_response(40170699),
+        )
+        # when
+        with self.assertLogs(level="DEBUG") as my_log:
+            evesdeapi.nearest_celestial(
+                solar_system_id=30002682,
+                x=660502472160,
+                y=-130687672800,
+                z=-813545103840,
+                group_id=EveGroupId.MOON,
+            )
+            # then
+            self.assertEqual(len(my_log.output), 2)
+            self.assertIn("Response from evesdeapi", my_log.output[1])
