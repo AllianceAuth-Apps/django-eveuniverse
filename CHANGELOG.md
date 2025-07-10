@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased] - yyyy-mm-dd
 
+## [1.5.8] - 2025-07-10
+
+### Fixed
+
+- Reactions with ID 11 missing in industry activities (#24).
+
 ## [1.5.7] - 2025-04-04
 
 ### Changed
