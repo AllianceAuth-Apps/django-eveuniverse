@@ -1,8 +1,8 @@
 import requests_mock
-from requests.exceptions import HTTPError
-
 from django.core.cache import cache
 from django.test import TestCase
+from requests.exceptions import HTTPError
+
 from eveuniverse.constants import EveGroupId
 from eveuniverse.core import evesdeapi
 from eveuniverse.tests.testdata.factories import create_evesdeapi_response
