@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased] - yyyy-mm-dd
 
+## [1.5.9] - 2025-07-18
+
+### Fixed
+
+- Unhandled exception when ESI is offline (#25)
+
 ## [1.5.8] - 2025-07-10
 
 ### Fixed
@@ -79,7 +85,7 @@ python manage.py eveuniverse_fix_section_flags
 
 ### Fixed
 
-- EveEntity.objects.bulk_create_esi() does not resolve existing empty objs.
+- EveEntity.objects.bulk_create_esi() does not resolve existing empty objects
 
 ## [1.4.1] - 2023-09-13
 
@@ -274,7 +280,7 @@ The following is a list of potential breaking changes introduced with this relea
 
 ### Added
 
-- EveEnties can now also be fetched from ESi by name, e.g. `EveEntity.objects.get_or_create_esi(name="Merlin")`
+- EveEntities can now also be fetched from ESi by name, e.g. `EveEntity.objects.get_or_create_esi(name="Merlin")`
 - New method: `EveEntity.objects.fetch_by_names_esi()` for resolving names to entity objects
 
 ### Changed
@@ -293,7 +299,7 @@ The following is a list of potential breaking changes introduced with this relea
 
 ### Fixed
 
-- Updated django-esi dependecy to enable Django 4.0 support
+- Updated django-esi dependency to enable Django 4.0 support
 - Defined AutoField
 
 ## [0.13.0] - 2022-02-28
@@ -317,7 +323,7 @@ The following is a list of potential breaking changes introduced with this relea
 
 ### Changed
 
-- Stopp trying to resolve known invalid IDs from ESI, e.g. 1
+- Stop trying to resolve known invalid IDs from ESI, e.g. 1
 
 ## [0.10.0] - 2022-01-04
 

@@ -11,6 +11,6 @@ def is_esi_online() -> bool:
         status = esi.client.Status.get_status().results(ignore_cache=True)
         if status.get("vip"):
             return False
-    except HTTPError:
+    except (AttributeError, HTTPError):
         return False
     return True
