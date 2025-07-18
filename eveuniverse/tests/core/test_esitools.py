@@ -20,3 +20,8 @@ class TestIsEsiOnline(NoSocketsTestCase):
         )
 
         self.assertFalse(esitools.is_esi_online())
+
+    def test_str_response(self, mock_esi):
+        mock_esi.client.Status.get_status.return_value.results.return_value = "error"
+
+        self.assertFalse(esitools.is_esi_online())
