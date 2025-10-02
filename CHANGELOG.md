@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased] - yyyy-mm-dd
 
+## [1.6.0] - TBD
+
+### Added
+
+- Task for updating stale entities (#23)
+
+### Changed
+
+- Removed support for Django 4.0 & 4.1
+
 ## [1.5.9] - 2025-07-18
 
 ### Fixed

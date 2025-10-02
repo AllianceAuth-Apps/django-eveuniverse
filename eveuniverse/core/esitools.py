@@ -6,7 +6,7 @@ from eveuniverse.providers import esi
 
 
 def is_esi_online() -> bool:
-    """Checks if the Eve servers are online. Returns True if there are, else False"""
+    """Reports whether the Eve servers are online."""
     try:
         status = esi.client.Status.get_status().results(ignore_cache=True)
         if status.get("vip"):

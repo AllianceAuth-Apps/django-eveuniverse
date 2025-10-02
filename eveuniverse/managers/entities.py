@@ -71,7 +71,7 @@ class EveEntityManagerBase(EveUniverseEntityModelManager):
         ids = set(map(int, ids))
         self._create_missing_objs(ids)
 
-        to_update_qs = self.filter(id__in=ids, name="")
+        to_update_qs: EveEntityQuerySet = self.filter(id__in=ids, name="")
         return to_update_qs.update_from_esi()
 
     def _create_missing_objs(self, ids: Set[int]) -> Set[int]:
