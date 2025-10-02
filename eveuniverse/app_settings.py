@@ -74,6 +74,6 @@ else it will return a generic SKIN icon.
 """
 
 EVEUNIVERSE_NAMES_EXPIRATION_TIME = clean_setting(
-    "EVEUNIVERSE_NAMES_EXPIRATION_TIME", default_value=3 * 24 * 3600, min_value=6
+    "EVEUNIVERSE_NAMES_EXPIRATION_TIME", default_value=3 * 24 * 3600, min_value=3600
 )
-"""Time in seconds after which an Eve Entity name becomes stale and should be updated."""
+"""Time in seconds after which an Eve Entity becomes stale and should be updated."""

@@ -342,16 +342,15 @@ def _update_market_prices_from_data(
 def update_stale_entities(
     chunk_size: int = 950, expiration_time=EVEUNIVERSE_NAMES_EXPIRATION_TIME
 ) -> int:
-    """Updates stale EveEntity objects (alliances, characters and corporations only).
-
-    Return the total number of stale objects to be updated.
+    """Update stale EveEntity objects (alliances, characters and corporations only)
+    and return the total number of stale objects.
 
     This task can be run on a regular basis (e.g. as periodic task)
     to ensure EveEntity names stay updated.
 
     Args:
-        chunk_size: Maximum number of entities to be updated in one chunk
-        expiration_time: Time in seconds after which an entity names becomes stale
+        chunk_size: Maximum number of entity objects to be updated per task run
+        expiration_time: Time in seconds after which an entity object becomes stale
     """
     if not is_esi_online():
         raise RuntimeError("ESI is not online. Aborted")
@@ -374,7 +373,7 @@ def update_stale_entities(
     for ids_chunk in chunks(ids, chunk_size):
         update_or_create_entities_from_esi.apply_async(
             kwargs={"ids": ids_chunk},
-            priority=8,
+            priority=EVEUNIVERSE_LOAD_TASKS_PRIORITY,
         )
 
     return len(ids)
