@@ -342,12 +342,12 @@ def _update_market_prices_from_data(
 def update_stale_entities(
     chunk_size: int = 950, expiration_time=EVEUNIVERSE_NAMES_EXPIRATION_TIME
 ) -> int:
-    """Updates stale eve entities (alliances, characters and corporations only).
+    """Updates stale EveEntity objects (alliances, characters and corporations only).
 
-    Return the total number of stale entities to be updated.
+    Return the total number of stale objects to be updated.
 
-    This task can be run as periodic task to ensure entities are updated
-    on a regular basis.
+    This task can be run on a regular basis (e.g. as periodic task)
+    to ensure EveEntity names stay updated.
 
     Args:
         chunk_size: Maximum number of entities to be updated in one chunk
@@ -372,7 +372,7 @@ def update_stale_entities(
 
     logger.info("Starting to update %d entities with stale names", len(ids))
     for ids_chunk in chunks(ids, chunk_size):
-        _update_entity_chunk_from_esi.apply_async(
+        update_or_create_entities_from_esi.apply_async(
             kwargs={"ids": ids_chunk},
             priority=8,
         )
@@ -385,8 +385,10 @@ def update_stale_entities(
     retry_kwargs={"max_retries": 3},
     retry_backoff=True,
 )
-def _update_entity_chunk_from_esi(ids: List[int]) -> int:
-    """Updates a chunk of eve entities from ESI. Returns how many objects where updated."""
+def update_or_create_entities_from_esi(ids: List[int]) -> int:
+    """Updates or creates EveEntity objects from ESI.
+    Returns how many objects where changed.
+    """
     updated = EveEntity.objects.update_from_esi_by_id(ids)
     logger.info("Updated %d entities from ESI", updated)
     return updated

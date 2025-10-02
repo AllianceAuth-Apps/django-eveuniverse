@@ -7,11 +7,11 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased] - yyyy-mm-dd
 
-## [1.6.0] - TBD
+## [1.6.0] - 2025-10-02
 
 ### Added
 
-- Task for updating stale entities (#23)
+- Added task `update_stale_entities` for updating names of stale entities (#23)
 
 ### Changed
 
