@@ -1,7 +1,9 @@
+import datetime as dt
 from unittest.mock import patch
 
 from django.test import TestCase
 from django.test.utils import override_settings
+from django.utils.timezone import now
 
 from eveuniverse.constants import EveCategoryId, EveGroupId
 from eveuniverse.models import (
@@ -25,11 +27,13 @@ from eveuniverse.tasks import (
     update_market_prices,
     update_or_create_eve_object,
     update_or_create_inline_object,
+    update_stale_entities,
     update_unresolved_eve_entities,
 )
 from eveuniverse.utils import NoSocketsTestCase
 
 from .testdata.esi import BravadoOperationStub, EsiClientStub
+from .testdata.factories_2 import EveEntityFactory
 
 TASKS_PATH = "eveuniverse.tasks"
 MANAGERS_PATH = "eveuniverse.managers"
@@ -248,3 +252,59 @@ class TestUpdateMarketPrices(TestCase):
         # then
         self.assertTrue(mock_fetch.called)
         self.assertFalse(mock_update.called)
+
+
+@patch(TASKS_PATH + ".is_esi_online")
+@patch(TASKS_PATH + ".EveEntity.objects.update_from_esi_by_id")
+@override_settings(CELERY_ALWAYS_EAGER=True, CELERY_EAGER_PROPAGATES_EXCEPTIONS=True)
+class TestUpdateStaleEntities(TestCase):
+    def test_should_update_stale_names_only(
+        self, mock_update_from_esi_by_id, mock_is_online
+    ):
+        def update_entity(ids: list) -> int:
+            EveEntity.objects.filter(id__in=list(ids)).update(name="updated")
+            return len(ids)
+
+        # given
+        mock_is_online.return_value = True
+        mock_update_from_esi_by_id.side_effect = update_entity
+        my_now = now()
+        with patch("django.utils.timezone.now") as mock_now:
+            mock_now.return_value = my_now - dt.timedelta(hours=10)
+            e1 = EveEntityFactory(category=EveEntity.CATEGORY_CHARACTER)
+            e2 = EveEntityFactory(category=EveEntity.CATEGORY_INVENTORY_TYPE)
+            mock_now.return_value = my_now
+            e3 = EveEntityFactory(category=EveEntity.CATEGORY_CHARACTER)
+            # when
+            got = update_stale_entities(expiration_time=1800)
+
+        # then
+        self.assertEqual(got, 1)
+        e1.refresh_from_db()
+        self.assertEqual(e1.name, "updated")
+        e2.refresh_from_db()
+        self.assertNotEqual(e2.name, "updated")
+        e3.refresh_from_db()
+        self.assertNotEqual(e3.name, "updated")
+
+    def test_should_abort_when_esi_is_offline(
+        self, mock_update_from_esi_by_id, mock_is_online
+    ):
+        # given
+        mock_is_online.return_value = False
+        with self.assertRaises(RuntimeError):
+            update_stale_entities(expiration_time=1800)
+
+    def test_should_do_nothing_when_no_stales_found(
+        self, mock_update_from_esi_by_id, mock_is_online
+    ):
+        # given
+        mock_is_online.return_value = True
+        mock_update_from_esi_by_id.side_effect = ValueError
+        e1 = EveEntityFactory(category=EveEntity.CATEGORY_CHARACTER)
+        # when
+        got = update_stale_entities(expiration_time=1800)
+        # then
+        self.assertEqual(got, 0)
+        e1.refresh_from_db()
+        self.assertNotEqual(e1.name, "updated")

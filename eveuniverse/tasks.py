@@ -1,15 +1,23 @@
 """Tasks for Eve Universe."""
 
+import datetime as dt
 import logging
 from typing import Iterable, List, Optional
 
+from bravado.exception import HTTPError
 from celery import chain, shared_task
 from celery_once import QueueOnce as BaseQueueOnce
 from django.db.utils import OperationalError
+from django.utils.timezone import now
 
 from . import __title__
-from .app_settings import EVEUNIVERSE_LOAD_TASKS_PRIORITY, EVEUNIVERSE_TASKS_TIME_LIMIT
+from .app_settings import (
+    EVEUNIVERSE_LOAD_TASKS_PRIORITY,
+    EVEUNIVERSE_NAMES_EXPIRATION_TIME,
+    EVEUNIVERSE_TASKS_TIME_LIMIT,
+)
 from .constants import POST_UNIVERSE_NAMES_MAX_ITEMS, EveCategoryId
+from .core.esitools import is_esi_online
 from .models import EveCategory, EveEntity, EveMarketPrice, EveRegion, EveType
 from .models.base import EveUniverseEntityModel, determine_effective_sections
 from .providers import esi
@@ -328,3 +336,58 @@ def _update_market_prices_from_data(
         return
 
     EveMarketPrice.objects.update_objs_from_esi_data(prices, minutes_until_stale)  # type: ignore
+
+
+@shared_task
+def update_stale_entities(
+    chunk_size: int = 950, expiration_time=EVEUNIVERSE_NAMES_EXPIRATION_TIME
+) -> int:
+    """Update stale EveEntity objects (alliances, characters and corporations only)
+    and return the total number of stale objects.
+
+    This task can be run on a regular basis (e.g. as periodic task)
+    to ensure EveEntity names stay updated.
+
+    Args:
+        chunk_size: Maximum number of entity objects to be updated per task run
+        expiration_time: Time in seconds after which an entity object becomes stale
+    """
+    if not is_esi_online():
+        raise RuntimeError("ESI is not online. Aborted")
+
+    oldest = now() - dt.timedelta(seconds=expiration_time)
+    categories = [
+        EveEntity.CATEGORY_ALLIANCE,
+        EveEntity.CATEGORY_CHARACTER,
+        EveEntity.CATEGORY_CORPORATION,
+    ]
+    ids_all = EveEntity.objects.filter(
+        last_updated__lt=oldest, category__in=categories
+    ).valid_ids()
+    ids = [id for id in ids_all if not EveEntity.is_npc_id(id)]
+    if not ids:
+        logger.info("Found no entities with stale names")
+        return 0
+
+    logger.info("Starting to update %d entities with stale names", len(ids))
+    for ids_chunk in chunks(ids, chunk_size):
+        update_or_create_entities_from_esi.apply_async(
+            kwargs={"ids": ids_chunk},
+            priority=EVEUNIVERSE_LOAD_TASKS_PRIORITY,
+        )
+
+    return len(ids)
+
+
+@shared_task(
+    autoretry_for=(HTTPError,),
+    retry_kwargs={"max_retries": 3},
+    retry_backoff=True,
+)
+def update_or_create_entities_from_esi(ids: List[int]) -> int:
+    """Updates or creates EveEntity objects from ESI.
+    Returns how many objects where changed.
+    """
+    updated = EveEntity.objects.update_from_esi_by_id(ids)
+    logger.info("Updated %d entities from ESI", updated)
+    return updated

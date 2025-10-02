@@ -49,6 +49,8 @@ EveEntity tasks
 
 .. autofunction:: eveuniverse.tasks.create_eve_entities
 
+.. autofunction:: eveuniverse.tasks.update_stale_entities
+
 .. autofunction:: eveuniverse.tasks.update_unresolved_eve_entities
 
 Object loader tasks

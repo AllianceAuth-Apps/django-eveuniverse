@@ -72,3 +72,8 @@ EVEUNIVERSE_USE_EVESKINSERVER = clean_setting("EVEUNIVERSE_USE_EVESKINSERVER", T
 """When True a call to EveType.icon_url for a SKIN type will return a eveskinserver URL
 else it will return a generic SKIN icon.
 """
+
+EVEUNIVERSE_NAMES_EXPIRATION_TIME = clean_setting(
+    "EVEUNIVERSE_NAMES_EXPIRATION_TIME", default_value=3 * 24 * 3600, min_value=3600
+)
+"""Time in seconds after which an Eve Entity becomes stale and should be updated."""

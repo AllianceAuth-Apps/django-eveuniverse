@@ -8,6 +8,7 @@ import factory.fuzzy
 from eveuniverse.models import (
     EveCategory,
     EveConstellation,
+    EveEntity,
     EveGroup,
     EveMoon,
     EvePlanet,
@@ -34,7 +35,7 @@ class EveCategoryFactory(
         django_get_or_create = ("id",)
 
     id = factory.Sequence(lambda n: 100_000 + n)
-    name = factory.Faker("color")
+    name = factory.Faker("color_name")
     published = True
 
 
@@ -46,7 +47,7 @@ class EveGroupFactory(
         django_get_or_create = ("id",)
 
     id = factory.Sequence(lambda n: 100_000 + n)
-    name = factory.Faker("color")
+    name = factory.Faker("color_name")
     eve_category = factory.SubFactory(EveCategoryFactory)
     published = True
 
@@ -59,7 +60,7 @@ class EveTypeFactory(
         django_get_or_create = ("id",)
 
     id = factory.Sequence(lambda n: 1_000_000 + n)
-    name = factory.Faker("color")
+    name = factory.Faker("color_name")
     description = factory.Faker("paragraph")
     eve_group = factory.SubFactory(EveGroupFactory)
     published = True
@@ -138,3 +139,15 @@ class EveMoonFactory(
     position_x = factory.fuzzy.FuzzyFloat(-1_000_000_000, 1_000_000_000)
     position_y = factory.fuzzy.FuzzyFloat(-1_000_000_000, 1_000_000_000)
     position_z = factory.fuzzy.FuzzyFloat(-1_000_000_000, 1_000_000_000)
+
+
+class EveEntityFactory(
+    factory.django.DjangoModelFactory, metaclass=BaseMetaFactory[EveEntity]
+):
+    class Meta:
+        model = EveEntity
+        django_get_or_create = ("id",)
+
+    id = factory.Sequence(lambda n: 90_000_001 + n)
+    category = EveEntity.CATEGORY_CHARACTER
+    name = factory.Faker("color_name")
