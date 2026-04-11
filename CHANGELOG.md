@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ### Fixed
 
 - Some factories generate objects with incorrect IDs (e.g. EveSolarSystem)
+- Tries to fetch django-esi 9 which is not compatible
 
 ## [1.6.0] - 2025-10-02
 
