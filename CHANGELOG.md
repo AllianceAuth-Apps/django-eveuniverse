@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased] - yyyy-mm-dd
 
+## [1.6.1] - 2026-04-11
+
+### Fixed
+
+- Some factories generate objects with incorrect IDs (e.g. EveSolarSystem)
+
 ## [1.6.0] - 2025-10-02
 
 ### Added
