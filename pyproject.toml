@@ -35,6 +35,9 @@ dependencies = [
     "requests",
 ]
 
+[project.optional-dependencies]
+test = ["coverage", "factory_boy", "pook", "requests-mock"]
+
 [project.urls]
 Documentation = "https://django-eveuniverse.readthedocs.io/en/latest/"
 Source = "https://gitlab.com/ErikKalkoken/django-eveuniverse"
@@ -45,7 +48,6 @@ name = "eveuniverse"
 
 [tool.isort]
 profile = "black"
-
 
 [tool.pylint.'MASTER']
 ignore-patterns = ["__init__.py", "apps.py", "admin.py"]

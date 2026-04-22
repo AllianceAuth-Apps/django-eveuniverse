@@ -113,7 +113,7 @@ class EveDogmaAttribute(EveUniverseEntityModel):
 class EveDogmaEffect(EveUniverseEntityModel):
     """A dogma effect in Eve Online"""
 
-    # we need to redefine the name field, because effect names can be very long
+    # we had to redefine the name field, because effect names can be very long
     name = models.CharField(
         max_length=400,
         default="",

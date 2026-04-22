@@ -30,6 +30,11 @@ STATICFILES_DIRS = [
 ]
 STATIC_ROOT = os.path.join(BASE_DIR, "static")
 
+SITE_URL = "https://www.example.com"
+
+# Django security
+CSRF_TRUSTED_ORIGINS = [SITE_URL]
+
 # Celery configuration
 BROKER_URL = "memory://localhost/"
 
@@ -53,4 +58,10 @@ INSTALLED_APPS = [
     "django.contrib.contenttypes",
     "django.contrib.sessions",
     "eveuniverse",
+    "esi",
 ]
+
+ESI_SSO_CLIENT_ID = "dummy"
+ESI_SSO_CLIENT_SECRET = "dummy"
+ESI_SSO_CALLBACK_URL = f"{SITE_URL}/sso/callback"
+ESI_USER_CONTACT_EMAIL = "info@example.com"

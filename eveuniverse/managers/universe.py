@@ -346,7 +346,7 @@ class EvePlanetManager(EveUniverseEntityModelManager):
                 return esi_data
 
         raise ValueError(
-            f"Failed to find moon {id} in solar system response for {system_id} "
+            f"Failed to find planet {id} in solar system response for {system_id} "
             f"- data error"
         )
 
@@ -390,7 +390,8 @@ class EvePlanetChildrenManager(EveUniverseEntityModelManager):
                 return esi_data
 
         raise ValueError(
-            f"Failed to find moon {id} in solar system response for {system_id} "
+            f"Failed to find {self._my_property_name} with {id} "
+            f"in solar system response for {system_id} "
             f"- data error"
         )
 
