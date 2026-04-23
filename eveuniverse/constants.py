@@ -19,6 +19,7 @@ class EveGroupId(IntEnum):
     ALLIANCE = 32
     ASTEROID_BELT = 9
     CHARACTER = 1
+    CITADEL = 1657
     CORPORATION = 2
     FRIGATE = 25
     MOON = 8

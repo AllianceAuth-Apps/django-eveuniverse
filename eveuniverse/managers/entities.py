@@ -1,9 +1,11 @@
 """Managers and Querysets for EveEntity models."""
 
+from __future__ import annotations
+
 import logging
 import warnings
 from collections import defaultdict
-from typing import Any, Iterable, Optional, Set, Tuple
+from typing import TYPE_CHECKING, Any, Iterable, Optional, Set, Tuple
 
 from bravado.exception import HTTPNotFound
 from django.db import models
@@ -17,6 +19,10 @@ from eveuniverse.providers import esi
 from eveuniverse.utils import LoggerAddTag, chunks
 
 from .universe import EveUniverseEntityModelManager
+
+if TYPE_CHECKING:
+    from eveuniverse.models import EveEntity
+
 
 logger = LoggerAddTag(logging.getLogger(__name__), __title__)
 
@@ -126,7 +132,7 @@ class EveEntityManagerBase(EveUniverseEntityModelManager):
 
     def fetch_by_names_esi(
         self, names: Iterable[str], update: bool = False
-    ) -> models.QuerySet:
+    ) -> models.QuerySet[EveEntity]:
         """Fetch entities matching given names.
         Will fetch missing entities from ESI if needed or requested.
 

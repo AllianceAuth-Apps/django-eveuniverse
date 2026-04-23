@@ -37,6 +37,23 @@ MODELS_PATH = "eveuniverse.models"
 
 
 class TestEveType(TestCase):
+    def test_should_return_value_as_str(self):
+        self.assertEqual(str(EveType.Section.DOGMAS), "dogmas")
+
+    def test_should_return_values(self):
+        self.assertSetEqual(
+            set(EveType.Section),
+            {
+                "dogmas",
+                "graphics",
+                "market_groups",
+                "type_materials",
+                "industry_activities",
+            },
+        )
+
+
+class TestEveType_ESI(TestCase):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
@@ -191,10 +208,72 @@ class TestEveType(TestCase):
         self.assertIs(etde.is_default, de_is_default)
 
     @patch(MODELS_PATH + ".base.EVEUNIVERSE_LOAD_GRAPHICS", False)
+    @patch(MODELS_PATH + ".base.EVEUNIVERSE_LOAD_DOGMAS", False)
+    @patch(MODELS_PATH + ".base.EVEUNIVERSE_LOAD_MARKET_GROUPS", False)
+    @pook.on
+    def test_can_create_type_from_scratch_with_parents(self):
+        # given
+        category_id = 6
+        group_id = 25
+        group_name = "Frigate"
+        type_id = 603
+        type_name = "Merlin"
+        pook.get(
+            make_esi_url(f"universe/categories/{category_id}"),
+            reply=200,
+            response_json={
+                "category_id": category_id,
+                "groups": [group_id],
+                "name": "Ship",
+                "published": True,
+            },
+        )
+        pook.get(
+            make_esi_url(f"universe/groups/{group_id}"),
+            reply=200,
+            response_json={
+                "category_id": category_id,
+                "group_id": group_id,
+                "name": group_name,
+                "published": True,
+                "types": [type_id],
+            },
+        )
+        pook.get(
+            make_esi_url(f"universe/types/{type_id}"),
+            reply=200,
+            response_json={
+                "capacity": 150,
+                "description": "",
+                "dogma_attributes": [],
+                "dogma_effects": [],
+                "graphic_id": 42,
+                "group_id": group_id,
+                "market_group_id": 666,
+                "mass": 997000,
+                "name": type_name,
+                "packaged_volume": 2500,
+                "portion_size": 1,
+                "published": True,
+                "radius": 39,
+                "type_id": type_id,
+                "volume": 16500,
+            },
+        )
+
+        # when
+        obj: EveType
+        obj, created = EveType.objects.get_or_create_esi(id=type_id)
+
+        # then
+        self.assertTrue(created)
+        self.assertEqual(obj.name, type_name)
+
+    @patch(MODELS_PATH + ".base.EVEUNIVERSE_LOAD_GRAPHICS", False)
     @patch(MODELS_PATH + ".base.EVEUNIVERSE_LOAD_DOGMAS", True)
     @patch(MODELS_PATH + ".base.EVEUNIVERSE_LOAD_MARKET_GROUPS", False)
     @pook.on
-    def test_can_create_type_from_esi_with_market_groups(self):
+    def test_can_create_type_from_esi_with_dogmas(self):
         # given
         graphic = EveGraphicFactory()
         eg = EveGroupFactory()
@@ -843,22 +922,17 @@ class TestEsiMapping(TestCase):
 class TestDetermineEnabledSections(TestCase):
     def test_should_return_empty_1(self):
         # when
-        with patch(MODELS_PATH + ".base.EVEUNIVERSE_LOAD_ASTEROID_BELTS", False), patch(
-            MODELS_PATH + ".base.EVEUNIVERSE_LOAD_DOGMAS", False
-        ), patch(MODELS_PATH + ".base.EVEUNIVERSE_LOAD_GRAPHICS", False), patch(
-            MODELS_PATH + ".base.EVEUNIVERSE_LOAD_MARKET_GROUPS", False
-        ), patch(
-            MODELS_PATH + ".base.EVEUNIVERSE_LOAD_MOONS", False
-        ), patch(
-            MODELS_PATH + ".base.EVEUNIVERSE_LOAD_PLANETS", False
-        ), patch(
-            MODELS_PATH + ".base.EVEUNIVERSE_LOAD_STARGATES", False
-        ), patch(
-            MODELS_PATH + ".base.EVEUNIVERSE_LOAD_STARS", False
-        ), patch(
-            MODELS_PATH + ".base.EVEUNIVERSE_LOAD_STATIONS", False
-        ), patch(
-            MODELS_PATH + ".base.EVEUNIVERSE_LOAD_TYPE_MATERIALS", False
+        with (
+            patch(MODELS_PATH + ".base.EVEUNIVERSE_LOAD_ASTEROID_BELTS", False),
+            patch(MODELS_PATH + ".base.EVEUNIVERSE_LOAD_DOGMAS", False),
+            patch(MODELS_PATH + ".base.EVEUNIVERSE_LOAD_GRAPHICS", False),
+            patch(MODELS_PATH + ".base.EVEUNIVERSE_LOAD_MARKET_GROUPS", False),
+            patch(MODELS_PATH + ".base.EVEUNIVERSE_LOAD_MOONS", False),
+            patch(MODELS_PATH + ".base.EVEUNIVERSE_LOAD_PLANETS", False),
+            patch(MODELS_PATH + ".base.EVEUNIVERSE_LOAD_STARGATES", False),
+            patch(MODELS_PATH + ".base.EVEUNIVERSE_LOAD_STARS", False),
+            patch(MODELS_PATH + ".base.EVEUNIVERSE_LOAD_STATIONS", False),
+            patch(MODELS_PATH + ".base.EVEUNIVERSE_LOAD_TYPE_MATERIALS", False),
         ):
             result = determine_effective_sections()
         # then
@@ -866,22 +940,17 @@ class TestDetermineEnabledSections(TestCase):
 
     def test_should_return_empty_2(self):
         # when
-        with patch(MODELS_PATH + ".base.EVEUNIVERSE_LOAD_ASTEROID_BELTS", False), patch(
-            MODELS_PATH + ".base.EVEUNIVERSE_LOAD_DOGMAS", False
-        ), patch(MODELS_PATH + ".base.EVEUNIVERSE_LOAD_GRAPHICS", False), patch(
-            MODELS_PATH + ".base.EVEUNIVERSE_LOAD_MARKET_GROUPS", False
-        ), patch(
-            MODELS_PATH + ".base.EVEUNIVERSE_LOAD_MOONS", False
-        ), patch(
-            MODELS_PATH + ".base.EVEUNIVERSE_LOAD_PLANETS", False
-        ), patch(
-            MODELS_PATH + ".base.EVEUNIVERSE_LOAD_STARGATES", False
-        ), patch(
-            MODELS_PATH + ".base.EVEUNIVERSE_LOAD_STARS", False
-        ), patch(
-            MODELS_PATH + ".base.EVEUNIVERSE_LOAD_STATIONS", False
-        ), patch(
-            MODELS_PATH + ".base.EVEUNIVERSE_LOAD_TYPE_MATERIALS", False
+        with (
+            patch(MODELS_PATH + ".base.EVEUNIVERSE_LOAD_ASTEROID_BELTS", False),
+            patch(MODELS_PATH + ".base.EVEUNIVERSE_LOAD_DOGMAS", False),
+            patch(MODELS_PATH + ".base.EVEUNIVERSE_LOAD_GRAPHICS", False),
+            patch(MODELS_PATH + ".base.EVEUNIVERSE_LOAD_MARKET_GROUPS", False),
+            patch(MODELS_PATH + ".base.EVEUNIVERSE_LOAD_MOONS", False),
+            patch(MODELS_PATH + ".base.EVEUNIVERSE_LOAD_PLANETS", False),
+            patch(MODELS_PATH + ".base.EVEUNIVERSE_LOAD_STARGATES", False),
+            patch(MODELS_PATH + ".base.EVEUNIVERSE_LOAD_STARS", False),
+            patch(MODELS_PATH + ".base.EVEUNIVERSE_LOAD_STATIONS", False),
+            patch(MODELS_PATH + ".base.EVEUNIVERSE_LOAD_TYPE_MATERIALS", False),
         ):
             result = determine_effective_sections(None)
         # then
@@ -889,22 +958,17 @@ class TestDetermineEnabledSections(TestCase):
 
     def test_should_return_global_section(self):
         # when
-        with patch(MODELS_PATH + ".base.EVEUNIVERSE_LOAD_ASTEROID_BELTS", False), patch(
-            MODELS_PATH + ".base.EVEUNIVERSE_LOAD_DOGMAS", True
-        ), patch(MODELS_PATH + ".base.EVEUNIVERSE_LOAD_GRAPHICS", False), patch(
-            MODELS_PATH + ".base.EVEUNIVERSE_LOAD_MARKET_GROUPS", False
-        ), patch(
-            MODELS_PATH + ".base.EVEUNIVERSE_LOAD_MOONS", False
-        ), patch(
-            MODELS_PATH + ".base.EVEUNIVERSE_LOAD_PLANETS", False
-        ), patch(
-            MODELS_PATH + ".base.EVEUNIVERSE_LOAD_STARGATES", False
-        ), patch(
-            MODELS_PATH + ".base.EVEUNIVERSE_LOAD_STARS", False
-        ), patch(
-            MODELS_PATH + ".base.EVEUNIVERSE_LOAD_STATIONS", False
-        ), patch(
-            MODELS_PATH + ".base.EVEUNIVERSE_LOAD_TYPE_MATERIALS", False
+        with (
+            patch(MODELS_PATH + ".base.EVEUNIVERSE_LOAD_ASTEROID_BELTS", False),
+            patch(MODELS_PATH + ".base.EVEUNIVERSE_LOAD_DOGMAS", True),
+            patch(MODELS_PATH + ".base.EVEUNIVERSE_LOAD_GRAPHICS", False),
+            patch(MODELS_PATH + ".base.EVEUNIVERSE_LOAD_MARKET_GROUPS", False),
+            patch(MODELS_PATH + ".base.EVEUNIVERSE_LOAD_MOONS", False),
+            patch(MODELS_PATH + ".base.EVEUNIVERSE_LOAD_PLANETS", False),
+            patch(MODELS_PATH + ".base.EVEUNIVERSE_LOAD_STARGATES", False),
+            patch(MODELS_PATH + ".base.EVEUNIVERSE_LOAD_STARS", False),
+            patch(MODELS_PATH + ".base.EVEUNIVERSE_LOAD_STATIONS", False),
+            patch(MODELS_PATH + ".base.EVEUNIVERSE_LOAD_TYPE_MATERIALS", False),
         ):
             result = determine_effective_sections()
         # then
@@ -912,29 +976,20 @@ class TestDetermineEnabledSections(TestCase):
 
     def test_should_combine_global_and_local_sections(self):
         # when
-        with patch(MODELS_PATH + ".base.EVEUNIVERSE_LOAD_ASTEROID_BELTS", False), patch(
-            MODELS_PATH + ".base.EVEUNIVERSE_LOAD_DOGMAS", True
-        ), patch(MODELS_PATH + ".base.EVEUNIVERSE_LOAD_GRAPHICS", False), patch(
-            MODELS_PATH + ".base.EVEUNIVERSE_LOAD_MARKET_GROUPS", False
-        ), patch(
-            MODELS_PATH + ".base.EVEUNIVERSE_LOAD_MOONS", False
-        ), patch(
-            MODELS_PATH + ".base.EVEUNIVERSE_LOAD_PLANETS", False
-        ), patch(
-            MODELS_PATH + ".base.EVEUNIVERSE_LOAD_STARGATES", False
-        ), patch(
-            MODELS_PATH + ".base.EVEUNIVERSE_LOAD_STARS", False
-        ), patch(
-            MODELS_PATH + ".base.EVEUNIVERSE_LOAD_STATIONS", False
-        ), patch(
-            MODELS_PATH + ".base.EVEUNIVERSE_LOAD_TYPE_MATERIALS", False
+        with (
+            patch(MODELS_PATH + ".base.EVEUNIVERSE_LOAD_ASTEROID_BELTS", False),
+            patch(MODELS_PATH + ".base.EVEUNIVERSE_LOAD_DOGMAS", True),
+            patch(MODELS_PATH + ".base.EVEUNIVERSE_LOAD_GRAPHICS", False),
+            patch(MODELS_PATH + ".base.EVEUNIVERSE_LOAD_MARKET_GROUPS", False),
+            patch(MODELS_PATH + ".base.EVEUNIVERSE_LOAD_MOONS", False),
+            patch(MODELS_PATH + ".base.EVEUNIVERSE_LOAD_PLANETS", False),
+            patch(MODELS_PATH + ".base.EVEUNIVERSE_LOAD_STARGATES", False),
+            patch(MODELS_PATH + ".base.EVEUNIVERSE_LOAD_STARS", False),
+            patch(MODELS_PATH + ".base.EVEUNIVERSE_LOAD_STATIONS", False),
+            patch(MODELS_PATH + ".base.EVEUNIVERSE_LOAD_TYPE_MATERIALS", False),
         ):
             result = determine_effective_sections(["type_materials"])
         # then
         self.assertSetEqual(
             result, {EveType.Section.DOGMAS, EveType.Section.TYPE_MATERIALS}
         )
-
-
-# --
-# --

@@ -113,13 +113,13 @@ class TestEveAsteroidBelt(TestCase):
     @pook.on
     def test_create_from_esi(self):
         # given
-        obj_id = 40349487
+        belt_id = 40349487
         planet = EvePlanetFactory()
         solar_system: EveSolarSystem = planet.eve_solar_system
         position = PositionFactory()
         obj_name = "Enaluri III - Asteroid Belt 1"
         pook.get(
-            make_esi_url(f"universe/asteroid_belts/{obj_id}"),
+            make_esi_url(f"universe/asteroid_belts/{belt_id}"),
             reply=200,
             response_json={
                 "name": obj_name,
@@ -133,7 +133,7 @@ class TestEveAsteroidBelt(TestCase):
             response_json={
                 "constellation_id": solar_system.eve_constellation.id,
                 "name": "Enaluri",
-                "planets": [{"asteroid_belts": [obj_id], "planet_id": planet.id}],
+                "planets": [{"asteroid_belts": [belt_id], "planet_id": planet.id}],
                 "position": {
                     "x": solar_system.position_x,
                     "y": solar_system.position_y,
@@ -146,11 +146,11 @@ class TestEveAsteroidBelt(TestCase):
 
         # when
         obj: EveAsteroidBelt
-        obj, created = EveAsteroidBelt.objects.get_or_create_esi(id=obj_id)
+        obj, created = EveAsteroidBelt.objects.get_or_create_esi(id=belt_id)
 
         # then
         self.assertTrue(created)
-        self.assertEqual(obj.id, obj_id)
+        self.assertEqual(obj.id, belt_id)
         self.assertEqual(obj.name, obj_name)
         self.assertEqual(obj.position_x, position["x"])
         self.assertEqual(obj.position_y, position["y"])

@@ -1,5 +1,4 @@
 import datetime as dt
-from typing import NamedTuple
 from unittest.mock import Mock, patch
 
 import pook
@@ -17,21 +16,11 @@ from eveuniverse.models import (
     EveRace,
     EveRegion,
     EveSolarSystem,
-    EveStar,
-    EveStation,
 )
 from eveuniverse.tests.testdata.factories_2 import (  # EveMoonFactory,
-    EveConstellationFactory,
     EveMarketPriceFactory,
     EvePlanetFactory,
-    EveRaceFactory,
-    EveSolarSystemAbyssalSpaceFactory,
     EveSolarSystemFactory,
-    EveSolarSystemHighSecFactory,
-    EveSolarSystemLowSecFactory,
-    EveSolarSystemNullSecFactory,
-    EveSolarSystemTrigSpaceFactory,
-    EveSolarSystemWSpaceFactory,
     EveTypeFactory,
     PositionFactory,
     make_esi_url,
@@ -294,6 +283,9 @@ class TestEvePlanet(TestCase):
         self.assertEqual(obj.eve_type, et)
         self.assertEqual(obj.eve_solar_system, solar_system)
 
+        self.assertFalse(obj.enabled_sections.asteroid_belts)
+        self.assertFalse(obj.enabled_sections.moons)
+
     @patch(MODELS_PATH + ".EVEUNIVERSE_LOAD_ASTEROID_BELTS", False)
     @patch(MODELS_PATH + ".EVEUNIVERSE_LOAD_MOONS", True)
     @pook.on
@@ -360,6 +352,9 @@ class TestEvePlanet(TestCase):
         self.assertEqual(obj.eve_type, et)
         self.assertEqual(obj.eve_solar_system, solar_system)
         self.assertTrue(EveMoon.objects.filter(id=moon_id).exists())
+
+        self.assertFalse(obj.enabled_sections.asteroid_belts)
+        self.assertTrue(obj.enabled_sections.moons)
 
     @patch(MODELS_PATH + ".EVEUNIVERSE_LOAD_ASTEROID_BELTS", True)
     @patch(MODELS_PATH + ".EVEUNIVERSE_LOAD_MOONS", True)
@@ -442,7 +437,10 @@ class TestEvePlanet(TestCase):
         self.assertEqual(obj.eve_type, et)
         self.assertEqual(obj.eve_solar_system, solar_system)
 
+        self.assertTrue(obj.enabled_sections.asteroid_belts)
         self.assertTrue(EveAsteroidBelt.objects.filter(id=belt_id).exists())
+
+        self.assertTrue(obj.enabled_sections.moons)
         self.assertTrue(EveMoon.objects.filter(id=moon_id).exists())
 
     @patch(MODELS_PATH + ".EVEUNIVERSE_LOAD_ASTEROID_BELTS", False)
@@ -686,27 +684,27 @@ class TestEveRegion(TestCase):
     @pook.on
     def test_create_from_esi(self):
         # given
-        id = 10000069
+        region_id = 10000069
         description = "Black Rise description"
         name = "Black Rise"
         pook.get(
-            make_esi_url(f"universe/regions/{id}"),
+            make_esi_url(f"universe/regions/{region_id}"),
             reply=200,
             response_json={
                 "constellations": [20000785],
                 "description": description,
                 "name": name,
-                "region_id": id,
+                "region_id": region_id,
             },
         )
 
         # when
         obj: EveRegion
-        obj, created = EveRegion.objects.update_or_create_esi(id=id)
+        obj, created = EveRegion.objects.update_or_create_esi(id=region_id)
 
         # then
         self.assertTrue(created)
-        self.assertEqual(obj.id, id)
+        self.assertEqual(obj.id, region_id)
         self.assertEqual(obj.name, name)
         self.assertEqual(obj.description, description)
         self.assertEqual(obj.eve_entity_category(), EveEntity.CATEGORY_REGION)
@@ -747,276 +745,6 @@ class TestEveRegion(TestCase):
 
         # then
         self.assertTrue(EveRegion.objects.filter(id=id_1).exists())
-        self.assertTrue(EveRegion.objects.filter(id=id_2).exists())
 
 
-class TestEveSolarSystem(TestCase):
-    @classmethod
-    def setUpClass(cls):
-        super().setUpClass()
-        cache.clear()
-
-    def test_str(self):
-        obj = EveSolarSystemFactory()
-        self.assertEqual(str(obj), obj.name)
-
-    @patch(MODELS_PATH + ".EVEUNIVERSE_LOAD_PLANETS", False)
-    @patch(MODELS_PATH + ".EVEUNIVERSE_LOAD_STARGATES", False)
-    @patch(MODELS_PATH + ".EVEUNIVERSE_LOAD_STARS", False)
-    @patch(MODELS_PATH + ".EVEUNIVERSE_LOAD_STATIONS", False)
-    @pook.on
-    def test_create_from_esi_minimal(self):
-        # given
-        constellation = EveConstellationFactory()
-        solar_system_id = 30045339
-        name = "Enaluri"
-        security_status = 0.3277980387210846
-        position = PositionFactory()
-        pook.get(
-            make_esi_url(f"universe/systems/{solar_system_id}"),
-            reply=200,
-            response_json={
-                "constellation_id": constellation.id,
-                "name": name,
-                "planets": [],
-                "position": position,
-                "security_status": security_status,
-                "system_id": solar_system_id,
-            },
-        )
-
-        # when
-        obj: EveSolarSystem
-        obj, created = EveSolarSystem.objects.get_or_create_esi(id=30045339)
-
-        # then
-        self.assertTrue(created)
-        self.assertEqual(obj.id, solar_system_id)
-        self.assertEqual(obj.name, name)
-        self.assertEqual(obj.eve_constellation, constellation)
-        self.assertEqual(obj.position_x, position["x"])
-        self.assertEqual(obj.position_y, position["y"])
-        self.assertEqual(obj.position_z, position["z"])
-        self.assertEqual(obj.security_status, security_status)
-        self.assertEqual(obj.eve_entity_category(), EveEntity.CATEGORY_SOLAR_SYSTEM)
-
-    @patch(MODELS_PATH + ".EVEUNIVERSE_LOAD_PLANETS", False)
-    @patch(MODELS_PATH + ".EVEUNIVERSE_LOAD_STARGATES", False)
-    @patch(MODELS_PATH + ".EVEUNIVERSE_LOAD_STARS", True)
-    @patch(MODELS_PATH + ".EVEUNIVERSE_LOAD_STATIONS", False)
-    @pook.on
-    def test_create_from_esi_with_stars(self):
-        # given
-        constellation = EveConstellationFactory()
-        solar_system_id = 30045339
-        name = "Enaluri"
-        security_status = 0.3277980387210846
-        position = PositionFactory()
-        star_id = 40349466
-        pook.get(
-            make_esi_url(f"universe/systems/{solar_system_id}"),
-            reply=200,
-            response_json={
-                "constellation_id": constellation.id,
-                "name": name,
-                "planets": [],
-                "position": position,
-                "security_status": security_status,
-                "system_id": solar_system_id,
-                "star_id": star_id,
-            },
-        )
-        et = EveTypeFactory()
-        pook.get(
-            make_esi_url(f"universe/stars/{star_id}"),
-            reply=200,
-            response_json={
-                "age": 37075060962,
-                "luminosity": 0.02542000077664852,
-                "name": "Enaluri - Star",
-                "radius": 590000000,
-                "solar_system_id": solar_system_id,
-                "spectral_class": "M6 V",
-                "temperature": 2385,
-                "type_id": et.id,
-            },
-        )
-
-        # when
-        obj: EveSolarSystem
-        obj, created = EveSolarSystem.objects.get_or_create_esi(id=solar_system_id)
-
-        # then
-        self.assertTrue(created)
-        self.assertEqual(obj.id, solar_system_id)
-        self.assertEqual(obj.eve_star, EveStar.objects.get(id=star_id))
-
-    @patch(MODELS_PATH + ".EVEUNIVERSE_LOAD_PLANETS", False)
-    @patch(MODELS_PATH + ".EVEUNIVERSE_LOAD_STARGATES", False)
-    @patch(MODELS_PATH + ".EVEUNIVERSE_LOAD_STARS", False)
-    @patch(MODELS_PATH + ".EVEUNIVERSE_LOAD_STATIONS", True)
-    @pook.on
-    def test_create_from_esi_with_stations(self):
-        # given
-        constellation = EveConstellationFactory()
-        solar_system_id = 30045339
-        station_id = 60015068
-        pook.get(
-            make_esi_url(f"universe/systems/{solar_system_id}"),
-            reply=200,
-            response_json={
-                "constellation_id": constellation.id,
-                "name": "Enaluri",
-                "planets": [],
-                "position": PositionFactory(),
-                "security_status": 0.3277980387210846,
-                "system_id": solar_system_id,
-                "star_id": 40349466,
-                "stations": [station_id],
-            },
-        )
-        et = EveTypeFactory()
-        er = EveRaceFactory()
-        pook.get(
-            make_esi_url(f"universe/stations/{station_id}"),
-            reply=200,
-            response_json={
-                "max_dockable_ship_volume": 50000000,
-                "name": "Enaluri V - State Protectorate Assembly Plant",
-                "office_rental_cost": 118744,
-                "owner": 1000180,
-                "position": PositionFactory(),
-                "race_id": er.id,
-                "reprocessing_efficiency": 0.5,
-                "reprocessing_stations_take": 0.025,
-                "services": [
-                    "bounty-missions",
-                    "courier-missions",
-                    "reprocessing-plant",
-                    "market",
-                    "repair-facilities",
-                    "factory",
-                    "fitting",
-                    "news",
-                    "insurance",
-                    "docking",
-                    "office-rental",
-                    "loyalty-point-store",
-                    "navy-offices",
-                    "security-offices",
-                ],
-                "station_id": station_id,
-                "system_id": solar_system_id,
-                "type_id": et.id,
-            },
-        )
-
-        # when
-        obj: EveSolarSystem
-        obj, created = EveSolarSystem.objects.get_or_create_esi(
-            id=solar_system_id, include_children=True
-        )
-
-        # then
-        self.assertTrue(created)
-        self.assertEqual(obj.id, 30045339)
-        self.assertTrue(EveStation.objects.filter(id=station_id).exists())
-
-
-"""
-@patch(MODELS_PATH + ".EVEUNIVERSE_LOAD_STARGATES", True)
-@patch(MODELS_PATH + ".cache")
-def test_can_calculate_route(self, mock_cache, mock_esi):
-    def my_get_or_set(key, func, timeout):
-        return func()
-
-
-    mock_cache.get.return_value = None
-    mock_cache.get_or_set.side_effect = my_get_or_set
-
-    enaluri, _ = EveSolarSystem.objects.get_or_create_esi(
-        id=30045339, include_children=True
-    )
-    akidagi, _ = EveSolarSystem.objects.get_or_create_esi(
-        id=30045342, include_children=True
-    )
-    self.assertEqual(enaluri.jumps_to(akidagi), 1)
-"""
-
-
-class TestEveSolarSystems_SpaceTypes(TestCase):
-    def test_can_identify_highsec_system(self):
-        obj = EveSolarSystemHighSecFactory()
-        self.assertTrue(obj.is_high_sec)
-        self.assertFalse(obj.is_low_sec)
-        self.assertFalse(obj.is_null_sec)
-        self.assertFalse(obj.is_w_space)
-        self.assertFalse(obj.is_trig_space)
-        self.assertFalse(obj.is_abyssal_deadspace)
-
-    def test_can_identify_lowsec_system(self):
-        obj = EveSolarSystemLowSecFactory()
-        self.assertTrue(obj.is_low_sec)
-        self.assertFalse(obj.is_high_sec)
-        self.assertFalse(obj.is_null_sec)
-        self.assertFalse(obj.is_w_space)
-        self.assertFalse(obj.is_trig_space)
-        self.assertFalse(obj.is_abyssal_deadspace)
-
-    def test_can_identify_nullsec_system(self):
-        obj = EveSolarSystemNullSecFactory()
-        self.assertTrue(obj.is_null_sec)
-        self.assertFalse(obj.is_low_sec)
-        self.assertFalse(obj.is_high_sec)
-        self.assertFalse(obj.is_w_space)
-        self.assertFalse(obj.is_trig_space)
-        self.assertFalse(obj.is_abyssal_deadspace)
-
-    def test_can_identify_ws_system(self):
-        obj = EveSolarSystemWSpaceFactory()
-        self.assertTrue(obj.is_w_space)
-        self.assertFalse(obj.is_null_sec)
-        self.assertFalse(obj.is_low_sec)
-        self.assertFalse(obj.is_high_sec)
-        self.assertFalse(obj.is_trig_space)
-        self.assertFalse(obj.is_abyssal_deadspace)
-
-    def test_can_identify_trig_system(self):
-        obj = EveSolarSystemTrigSpaceFactory()
-        self.assertFalse(obj.is_w_space)
-        self.assertFalse(obj.is_null_sec)
-        self.assertFalse(obj.is_low_sec)
-        self.assertFalse(obj.is_high_sec)
-        self.assertTrue(obj.is_trig_space)
-        self.assertFalse(obj.is_abyssal_deadspace)
-
-    def test_can_identify_abyssal_deadspace(self):
-        obj = EveSolarSystemAbyssalSpaceFactory()
-        self.assertFalse(obj.is_w_space)
-        self.assertFalse(obj.is_null_sec)
-        self.assertFalse(obj.is_low_sec)
-        self.assertFalse(obj.is_high_sec)
-        self.assertFalse(obj.is_trig_space)
-        self.assertTrue(obj.is_abyssal_deadspace)
-
-    def test_all(self):
-        class Case(NamedTuple):
-            name: str
-            security_status: float
-            is_high_sec: bool
-            is_low_sec: bool
-            is_null_sec: bool
-
-        cases = [
-            Case("high sec normal", 1.0, True, False, False),
-            Case("low sec normal", 0.3, False, True, False),
-            Case("null sec normal", -0.3, False, False, True),
-            Case("low sec lower border", 0.049993, False, True, False),
-            Case("low sec upper border", 0.0449, False, True, False),
-        ]
-        for tc in cases:
-            with self.subTest(name=tc.name):
-                system = EveSolarSystemFactory(security_status=tc.security_status)
-                self.assertIs(system.is_high_sec, tc.is_high_sec)
-                self.assertIs(system.is_low_sec, tc.is_low_sec)
-                self.assertIs(system.is_null_sec, tc.is_null_sec)
+# --

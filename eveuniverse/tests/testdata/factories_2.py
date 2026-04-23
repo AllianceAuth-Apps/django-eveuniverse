@@ -8,6 +8,7 @@ import factory.fuzzy
 
 from eveuniverse.constants import EveCategoryId, EveGroupId, EveRegionId
 from eveuniverse.models import (
+    EveAsteroidBelt,
     EveBloodline,
     EveCategory,
     EveConstellation,
@@ -23,7 +24,10 @@ from eveuniverse.models import (
     EveRace,
     EveRegion,
     EveSolarSystem,
+    EveStar,
     EveStargate,
+    EveStation,
+    EveStationService,
     EveType,
 )
 
@@ -67,9 +71,49 @@ class EveEntityFactory(
         model = EveEntity
         django_get_or_create = ("id",)
 
-    id = factory.Sequence(lambda n: 90_000_001 + n)
+    id = factory.Sequence(lambda n: 90_900_001 + n)
     category = EveEntity.CATEGORY_CHARACTER
-    name = factory.Faker("color_name")
+    name = factory.Sequence(lambda n: f"character_name_{n}")
+
+
+class EveEntityAllianceFactory(EveEntityFactory):
+    id = factory.Sequence(lambda n: 99_900_001 + n)
+    name = factory.Sequence(lambda n: f"alliance_name_{n}")
+    category = EveEntity.CATEGORY_ALLIANCE
+
+
+class EveEntityUnresolvedFactory(EveEntityFactory):
+    name = ""
+    category = ""
+
+
+class EveEntityCharacterFactory(EveEntityFactory):
+    pass
+
+
+class EveEntityCorporationFactory(EveEntityFactory):
+    id = factory.Sequence(lambda n: 98_900_001 + n)
+    name = factory.Sequence(lambda n: f"corporation_name_{n}")
+    category = EveEntity.CATEGORY_CORPORATION
+
+
+class EveEntityFactionFactory(EveEntityFactory):
+    id = factory.Sequence(lambda n: 509_001 + n)
+    name = factory.Sequence(lambda n: f"faction_name_{n}")
+    category = EveEntity.CATEGORY_FACTION
+
+
+class EveRaceFactory(
+    factory.django.DjangoModelFactory, metaclass=BaseMetaFactory[EveRace]
+):
+    class Meta:
+        model = EveRace
+        django_get_or_create = ("id",)
+
+    id = factory.Sequence(lambda n: 1 + n)
+    alliance_id = factory.fuzzy.FuzzyInteger(590_001, 600_000)
+    name = factory.Faker("color")
+    description = factory.Faker("paragraph")
 
 
 # Types
@@ -85,6 +129,11 @@ class EveCategoryFactory(
     id = factory.Sequence(lambda n: 100_000 + n)
     name = factory.Faker("color_name")
     published = True
+
+
+class CelestialCategoryFactory(EveCategoryFactory):
+    id = EveCategoryId.CELESTIAL
+    name = "Celestial"
 
 
 class EveGroupFactory(
@@ -171,6 +220,26 @@ class EveTypeFactory(
     published = True
 
 
+class AsteroidBeltTypeFactory(EveTypeFactory):
+    eve_group = factory.SubFactory(
+        EveGroupFactory,
+        eve_category__id=EveCategoryId.CELESTIAL,
+        eve_category__name="Celestial",
+        id=EveGroupId.ASTEROID_BELT,
+        name="Asteroid Belt",
+    )
+
+
+class CitadelTypeFactory(EveTypeFactory):
+    eve_group = factory.SubFactory(
+        EveGroupFactory,
+        eve_category__id=EveCategoryId.STRUCTURE,
+        eve_category__name="Structure",
+        id=EveGroupId.CITADEL,
+        name="Citadel",
+    )
+
+
 class BlueprintTypeFactory(EveTypeFactory):
     eve_group = factory.SubFactory(
         EveGroupFactory,
@@ -178,6 +247,36 @@ class BlueprintTypeFactory(EveTypeFactory):
         eve_category__name="Blueprint",
         id=105,
         name="Frigate Blueprint",
+    )
+
+
+class MoonTypeFactory(EveTypeFactory):
+    eve_group = factory.SubFactory(
+        EveGroupFactory,
+        eve_category__id=EveCategoryId.CELESTIAL,
+        eve_category__name="Celestial",
+        id=EveGroupId.MOON,
+        name="Moon",
+    )
+
+
+class StarTypeFactory(EveTypeFactory):
+    eve_group = factory.SubFactory(
+        EveGroupFactory,
+        eve_category__id=EveCategoryId.CELESTIAL,
+        eve_category__name="Celestial",
+        id=EveGroupId.STAR,
+        name="Star",
+    )
+
+
+class StationTypeFactory(EveTypeFactory):
+    eve_group = factory.SubFactory(
+        EveGroupFactory,
+        eve_category__id=EveCategoryId.CELESTIAL,
+        eve_category__name="Celestial",
+        id=EveGroupId.STATION,
+        name="Station",
     )
 
 
@@ -212,6 +311,16 @@ class ShipTypeFactory(EveTypeFactory):
         eve_category__name="Ship",
         id=EveGroupId.FRIGATE,
         name="Frigate",
+    )
+
+
+class StargateTypeFactory(EveTypeFactory):
+    eve_group = factory.SubFactory(
+        EveGroupFactory,
+        eve_category__id=EveCategoryId.CELESTIAL,
+        eve_category__name="Celestial",
+        id=EveGroupId.STARGATE,
+        name="Stargate",
     )
 
 
@@ -303,6 +412,61 @@ class EveSolarSystemAbyssalSpaceFactory(EveSolarSystemFactory):
     security_status = -1.0
 
 
+class EveStarFactory(
+    factory.django.DjangoModelFactory, metaclass=BaseMetaFactory[EveStar]
+):
+    class Meta:
+        model = EveStar
+        django_get_or_create = ("id",)
+
+    id = factory.Sequence(lambda n: 40_940_000 + n)
+    name = factory.Faker("street_name")
+    age = factory.fuzzy.FuzzyInteger(0, 100_000_000_000)
+    eve_type = factory.SubFactory(StarTypeFactory)
+    luminosity = factory.fuzzy.FuzzyFloat(0, 1)
+    radius = factory.fuzzy.FuzzyInteger(0, 100_000_000)
+    spectral_class = "M6 V"
+    temperature = factory.fuzzy.FuzzyInteger(0, 10_000)
+
+
+class EveStationServiceFactory(
+    factory.django.DjangoModelFactory, metaclass=BaseMetaFactory[EveStationService]
+):
+    class Meta:
+        model = EveStationService
+
+    name = factory.Faker("word")
+
+
+class EveStationFactory(
+    factory.django.DjangoModelFactory, metaclass=BaseMetaFactory[EveStation]
+):
+    class Meta:
+        model = EveStation
+        django_get_or_create = ("id",)
+
+    id = factory.Sequence(lambda n: 40_950_000 + n)
+    name = factory.Faker("city")
+    eve_race = factory.SubFactory(EveRaceFactory)
+    eve_solar_system = factory.SubFactory(EveSolarSystemFactory)
+    eve_type = factory.SubFactory(StationTypeFactory)
+    max_dockable_ship_volume = factory.fuzzy.FuzzyFloat(0, 100_000_000)
+    office_rental_cost = factory.fuzzy.FuzzyFloat(0, 100_000_000)
+    owner_id = factory.fuzzy.FuzzyInteger(0, 500_000)
+    position_x = factory.fuzzy.FuzzyFloat(_POSITION_MIN, _POSITION_MAX)
+    position_y = factory.fuzzy.FuzzyFloat(_POSITION_MIN, _POSITION_MAX)
+    position_z = factory.fuzzy.FuzzyFloat(_POSITION_MIN, _POSITION_MAX)
+    reprocessing_efficiency = factory.fuzzy.FuzzyFloat(0, 1)
+    reprocessing_stations_take = factory.fuzzy.FuzzyFloat(0, 100_000)
+
+    @factory.post_generation
+    def services(self, create, extracted, **kwargs):
+        if not create or not extracted:
+            return
+
+        self.services.add(*extracted)
+
+
 class EvePlanetFactory(
     factory.django.DjangoModelFactory, metaclass=BaseMetaFactory[EvePlanet]
 ):
@@ -314,6 +478,21 @@ class EvePlanetFactory(
     name = factory.Faker("street_name")
     eve_solar_system = factory.SubFactory(EveSolarSystemFactory)
     eve_type = factory.SubFactory(PlanetTypeFactory)
+    position_x = factory.fuzzy.FuzzyFloat(_POSITION_MIN, _POSITION_MAX)
+    position_y = factory.fuzzy.FuzzyFloat(_POSITION_MIN, _POSITION_MAX)
+    position_z = factory.fuzzy.FuzzyFloat(_POSITION_MIN, _POSITION_MAX)
+
+
+class EveAsteroidBeltFactory(
+    factory.django.DjangoModelFactory, metaclass=BaseMetaFactory[EveAsteroidBelt]
+):
+    class Meta:
+        model = EveAsteroidBelt
+        django_get_or_create = ("id",)
+
+    id = factory.Sequence(lambda n: 40_930_000 + n)
+    name = factory.Faker("city")
+    eve_planet = factory.SubFactory(EvePlanetFactory)
     position_x = factory.fuzzy.FuzzyFloat(_POSITION_MIN, _POSITION_MAX)
     position_y = factory.fuzzy.FuzzyFloat(_POSITION_MIN, _POSITION_MAX)
     position_z = factory.fuzzy.FuzzyFloat(_POSITION_MIN, _POSITION_MAX)
@@ -344,7 +523,7 @@ class EveStargateFactory(
     id = factory.Sequence(lambda n: 50_900_000 + n)
     name = factory.Faker("city")
     eve_solar_system = factory.SubFactory(EveSolarSystemFactory)
-    eve_type = factory.SubFactory(EveTypeFactory)
+    eve_type = factory.SubFactory(StargateTypeFactory)
     position_x = factory.fuzzy.FuzzyFloat(_POSITION_MIN, _POSITION_MAX)
     position_y = factory.fuzzy.FuzzyFloat(_POSITION_MIN, _POSITION_MAX)
     position_z = factory.fuzzy.FuzzyFloat(_POSITION_MIN, _POSITION_MAX)
@@ -370,16 +549,3 @@ class EveBloodlineFactory(
     memory = factory.fuzzy.FuzzyInteger(17, 32)
     perception = factory.fuzzy.FuzzyInteger(17, 32)
     willpower = factory.fuzzy.FuzzyInteger(17, 32)
-
-
-class EveRaceFactory(
-    factory.django.DjangoModelFactory, metaclass=BaseMetaFactory[EveRace]
-):
-    class Meta:
-        model = EveRace
-        django_get_or_create = ("id",)
-
-    id = factory.Sequence(lambda n: 1 + n)
-    alliance_id = factory.fuzzy.FuzzyInteger(590_001, 600_000)
-    name = factory.Faker("color")
-    description = factory.Faker("paragraph")
