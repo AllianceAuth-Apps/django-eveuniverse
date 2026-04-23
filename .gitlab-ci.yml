@@ -13,7 +13,7 @@ stages:
 
 pre-commit:
     stage: checks
-    image: python:3.10-bookworm
+    image: python:3.12-bookworm
     variables:
         PRE_COMMIT_HOME: ${CI_PROJECT_DIR}/.cache/pre-commit
     cache:
@@ -29,26 +29,6 @@ pylint:
     image: python:3.10-bookworm
     script:
         - tox -e pylint
-
-test-py38:
-    extends: .tox_setup
-    image: python:3.8-bookworm
-    script:
-        - tox -e py38-$DJANGO_VERSION
-        - bash <(curl -s https://codecov.io/bash)
-    parallel:
-        matrix:
-            - DJANGO_VERSION: [django32, django42]
-
-test-py39:
-    extends: .tox_setup
-    image: python:3.9-bookworm
-    script:
-        - tox -e py39-$DJANGO_VERSION
-        - bash <(curl -s https://codecov.io/bash)
-    parallel:
-        matrix:
-            - DJANGO_VERSION: [django32, django42]
 
 test-py310:
     extends: .tox_setup
@@ -82,7 +62,7 @@ test-py312:
 
 test-docs:
     stage: test
-    image: python:3.10-bookworm
+    image: python:3.12-bookworm
     before_script:
         - pip install tox
     script:
@@ -90,7 +70,7 @@ test-docs:
 
 deploy-pypi:
     stage: deploy
-    image: python:3.10-bookworm
+    image: python:3.12-bookworm
 
     before_script:
         - pip install build wheel twine

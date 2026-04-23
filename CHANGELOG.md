@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased] - yyyy-mm-dd
 
+## [2.0.0] - TBD
+
+### Changed
+
+- Breaking Change: Removed support for Django 3.2
+- Breaking Change: Removed support for Python 3.8, 3.9
+- Pinned swagger file
+- Modernized HTTP related tests
+
 ## [1.6.1] - 2026-04-11
 
 ### Fixed

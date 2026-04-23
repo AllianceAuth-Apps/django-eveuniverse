@@ -7,19 +7,16 @@ name = "django-eveuniverse"
 dynamic = ["description", "version"]
 readme = "README.md"
 license = { file = "LICENSE" }
-requires-python = ">=3.8"
+requires-python = ">=3.10"
 authors = [{ name = "Erik Kalkoken", email = "kalkoken87@gmail.com" }]
 classifiers = [
     "Environment :: Web Environment",
     "Framework :: Django",
-    "Framework :: Django :: 3.2",
     "Framework :: Django :: 4.2",
     "Intended Audience :: Developers",
     "License :: OSI Approved :: MIT License",
     "Operating System :: OS Independent",
     "Programming Language :: Python",
-    "Programming Language :: Python :: 3.8",
-    "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
@@ -30,8 +27,8 @@ dependencies = [
     "celery>=4.0.2",
     "celery_once>=3.0.1",
     "django-bitfield>=2.2",
-    "django-esi>=4,<9",
-    "django>=3.2",
+    "django-esi>=8,<9",
+    "django>=4.2,<5",
     "requests",
 ]
 
