@@ -13,6 +13,7 @@ classifiers = [
     "Environment :: Web Environment",
     "Framework :: Django",
     "Framework :: Django :: 4.2",
+    "Framework :: Django :: 5.2",
     "Intended Audience :: Developers",
     "License :: OSI Approved :: MIT License",
     "Operating System :: OS Independent",
@@ -28,7 +29,7 @@ dependencies = [
     "celery_once>=3.0.1",
     "django-bitfield>=2.2",
     "django-esi>=8,<9",
-    "django>=4.2,<5",
+    "django>=4.2,<6",
     "requests",
 ]
 

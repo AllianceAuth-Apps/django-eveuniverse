@@ -13,16 +13,18 @@ This release is a major update with several breaking changes.
 
 - Switched to OpenAPI client from django-esi to replace deprecated Swagger client
 - No longer provides tools for generating test data
-- New minimum requirements: Python 3.10 / Django 4.2 / django-esi 8
+- New minimum requirements: Python 3.10 & Django 4.2 & django-esi 8
 
 ### Changed
 
 - Breaking Change: Removed support for Django 3.2
 - Breaking Change: Removed support for Python 3.8, 3.9
 - Breaking Change: Removed `EsiClientStub`, testdata feature -> Use test factories instead
+- Added test factories for all types
 - Removed outdated command `eveuniverse_fix_section_flags`
 - Pinned swagger spec file
 - Modernized HTTP related
+- Added support for Django 5.2
 
 ### Fixed
 
