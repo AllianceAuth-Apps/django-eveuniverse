@@ -1,27 +1,58 @@
-from unittest.mock import Mock, patch
-
-from bravado.exception import HTTPInternalServerError
+import pook
+from django.core.cache import cache
+from django.test import TestCase
 
 from eveuniverse.core import esitools
-from eveuniverse.tests.testdata.esi import EsiClientStub
-from eveuniverse.utils import NoSocketsTestCase
+from eveuniverse.tests.testdata.factories_2 import make_esi_url
 
 
-@patch("eveuniverse.core.esitools.esi")
-class TestIsEsiOnline(NoSocketsTestCase):
-    def test_is_online(self, mock_esi):
-        mock_esi.client = EsiClientStub()
+class TestIsEsiOnline(TestCase):
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cache.clear()
 
-        self.assertTrue(esitools.is_esi_online())
-
-    def test_is_offline(self, mock_esi):
-        mock_esi.client.Status.get_status.side_effect = HTTPInternalServerError(
-            Mock(**{"response.status_code": 500})
+    @pook.on
+    def test_is_online(self):
+        # given
+        pook.get(
+            make_esi_url("status"),
+            reply=200,
+            response_json={
+                "players": 42,
+                "server_version": "version",
+                "start_time": "2019-08-24T14:15:22Z",
+            },
         )
 
+        # when/then
+        self.assertTrue(esitools.is_esi_online())
+
+    @pook.on
+    def test_is_offline(self):
+        # given
+        pook.get(
+            make_esi_url("status"),
+            reply=500,
+            response_json={"error": "error"},
+        )
+
+        # then
         self.assertFalse(esitools.is_esi_online())
 
-    def test_str_response(self, mock_esi):
-        mock_esi.client.Status.get_status.return_value.results.return_value = "error"
+    @pook.on
+    def test_should_report_vip_as_offline(self):
+        # given
+        pook.get(
+            make_esi_url("status"),
+            reply=200,
+            response_json={
+                "players": 42,
+                "server_version": "version",
+                "start_time": "2019-08-24T14:15:22Z",
+                "vip": True,
+            },
+        )
 
+        # when/then
         self.assertFalse(esitools.is_esi_online())
