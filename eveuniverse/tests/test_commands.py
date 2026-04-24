@@ -249,7 +249,7 @@ class TestLoadTypes(TestCase):
         self.assertTrue(EveType.objects.filter(id=type_id_2).exists())
 
     @pook.on
-    def test_load_multiple_combined(self):
+    def test_should_load_category_with_all_children(self):
         # given
         category_id = 65
         category_name = "Structure"

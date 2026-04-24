@@ -7,7 +7,7 @@ from django.test import TestCase
 
 from eveuniverse.core import evesdeapi
 from eveuniverse.helpers import meters_to_ly
-from eveuniverse.models import EveEntity, EveSolarSystem, EveStar, EveType
+from eveuniverse.models import EveEntity, EvePlanet, EveSolarSystem, EveStar, EveType
 from eveuniverse.tests.testdata.factories_2 import (
     AsteroidBeltTypeFactory,
     EveAsteroidBeltFactory,
@@ -309,77 +309,76 @@ class TestEveSolarSystem_Sections(TestCase):
         self.assertEqual(obj.id, solar_system_id)
         self.assertFalse(obj.enabled_sections.stargates)
 
-    # TODO: Investigate potential bug -
-    # @pook.on
-    # def test_should_create_solar_system_with_planets_and_moons(self):
-    #     # given
-    #     constellation = EveConstellationFactory()
-    #     moon_id = 40349468
-    #     name = "Enaluri"
-    #     planet_id = 40349467
-    #     position = PositionFactory()
-    #     security_status = 0.3277980387210846
-    #     solar_system_id = 30045339
-    #     pook.get(
-    #         make_esi_url(f"universe/systems/{solar_system_id}"),
-    #         reply=200,
-    #         response_json={
-    #             "constellation_id": constellation.id,
-    #             "name": name,
-    #             "planets": [
-    #                 {
-    #                     "moons": [moon_id],
-    #                     "planet_id": planet_id,
-    #                 }
-    #             ],
-    #             "position": position,
-    #             "security_status": security_status,
-    #             "system_id": solar_system_id,
-    #         },
-    #     )
-    #     pook.get(
-    #         make_esi_url(f"universe/moons/{moon_id}"),
-    #         reply=200,
-    #         response_json={
-    #             "moon_id": moon_id,
-    #             "name": "Enaluri I - Moon 1",
-    #             "position": position,
-    #             "system_id": solar_system_id,
-    #         },
-    #     )
-    #     planet_type = EveTypeFactory()
-    #     pook.get(
-    #         make_esi_url(f"universe/planets/{planet_id}"),
-    #         reply=200,
-    #         response_json={
-    #             "name": "Enaluri I",
-    #             "planet_id": planet_id,
-    #             "position": PositionFactory(),
-    #             "system_id": solar_system_id,
-    #             "type_id": planet_type.id,
-    #         },
-    #     )
+    @pook.on
+    def test_should_create_solar_system_with_planets_and_moons(self):
+        # given
+        constellation = EveConstellationFactory()
+        moon_id = 40349468
+        name = "Enaluri"
+        planet_id = 40349467
+        position = PositionFactory()
+        security_status = 0.3277980387210846
+        solar_system_id = 30045339
+        pook.get(
+            make_esi_url(f"universe/systems/{solar_system_id}"),
+            reply=200,
+            response_json={
+                "constellation_id": constellation.id,
+                "name": name,
+                "planets": [
+                    {
+                        "moons": [moon_id],
+                        "planet_id": planet_id,
+                    }
+                ],
+                "position": position,
+                "security_status": security_status,
+                "system_id": solar_system_id,
+            },
+        )
+        pook.get(
+            make_esi_url(f"universe/moons/{moon_id}"),
+            reply=200,
+            response_json={
+                "moon_id": moon_id,
+                "name": "Enaluri I - Moon 1",
+                "position": position,
+                "system_id": solar_system_id,
+            },
+        )
+        planet_type = EveTypeFactory()
+        pook.get(
+            make_esi_url(f"universe/planets/{planet_id}"),
+            reply=200,
+            response_json={
+                "name": "Enaluri I",
+                "planet_id": planet_id,
+                "position": PositionFactory(),
+                "system_id": solar_system_id,
+                "type_id": planet_type.id,
+            },
+        )
 
-    #     # when
-    #     solar_system: EveSolarSystem
-    #     solar_system, _ = EveSolarSystem.objects.get_or_create_esi(
-    #         id=solar_system_id,
-    #         include_children=True,
-    #         enabled_sections=[
-    #             EveSolarSystem.Section.PLANETS,
-    #             EvePlanet.Section.ASTEROID_BELTS,
-    #             EvePlanet.Section.MOONS,
-    #         ],
-    #     )
+        # when
+        solar_system: EveSolarSystem
+        solar_system, _ = EveSolarSystem.objects.get_or_create_esi(
+            id=solar_system_id,
+            include_children=True,
+            enabled_sections=[
+                EveSolarSystem.Section.PLANETS,
+                EvePlanet.Section.ASTEROID_BELTS,
+                EvePlanet.Section.MOONS,
+            ],
+        )
 
-    #     # then
-    #     self.assertEqual(solar_system.id, solar_system_id)
-    #     self.assertTrue(solar_system.enabled_sections.planets)
-    #     self.assertTrue(solar_system.eve_planets.filter(id=planet_id).exists())
+        # then
+        self.assertEqual(solar_system.id, solar_system_id)
+        self.assertTrue(solar_system.enabled_sections.planets)
+        self.assertTrue(solar_system.eve_planets.filter(id=planet_id).exists())
 
-    #     planet = solar_system.eve_planets.get(id=planet_id)
-    #     self.assertTrue(planet.enabled_sections.moons)
-    #     self.assertTrue(planet.eve_moons.filter(id=moon_id).exists())
+        planet = solar_system.eve_planets.get(id=planet_id)
+        self.assertTrue(planet.enabled_sections.moons)
+        self.assertTrue(planet.eve_moons.filter(id=moon_id).exists())
 
 
 @patch(MODELS_PATH + ".EVEUNIVERSE_LOAD_ASTEROID_BELTS", False)

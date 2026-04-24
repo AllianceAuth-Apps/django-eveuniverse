@@ -521,42 +521,164 @@ class TestLoadData(TestCase):
         self.assertTrue(EveType.objects.filter(id=type_id).exists())
 
 
-# FIXME: Temporary
-# @patch(TASKS_PATH + ".tasks.update_or_create_eve_object")
-# class TestLoadAllTypes(TestCase):
-#     def test_should_load_all_types(self, mock_update_or_create_eve_object):
-#         # given
-#         mock_esi.client.Universe.get_universe_categories.return_value = (
-#             BravadoOperationStub([1, 2])
-#         )
-#         # when
-#         load_all_types()
-#         # then
-#         self.assertEqual(mock_update_or_create_eve_object.delay.call_count, 2)
+@override_settings(CELERY_ALWAYS_EAGER=True, CELERY_EAGER_PROPAGATES_EXCEPTIONS=True)
+class TestLoadAllTypes(TestCase):
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cache.clear()
 
-#     def test_should_abort_when_esi_returns_no_data(
-#         self, mock_update_or_create_eve_object
-#     ):
-#         # given
-#         mock_esi.client.Universe.get_universe_categories.return_value = (
-#             BravadoOperationStub(None)
-#         )
-#         # when/then
-#         with self.assertRaises(ValueError):
-#             load_all_types()
+    @pook.on
+    def test_should_load_all_types(self):
+        # given
+        category_id = 65
+        category_name = "Structure"
+        group_id = 1406
+        group_name = "Refinery"
+        type_id = 35835
+        type_name = "Athanor"
+        pook.get(
+            make_esi_url("universe/categories"),
+            reply=200,
+            response_json=[category_id],
+        )
+        pook.get(
+            make_esi_url(f"universe/categories/{category_id}"),
+            reply=200,
+            response_json={
+                "category_id": category_id,
+                "groups": [group_id],
+                "name": category_name,
+                "published": True,
+            },
+        )
+        pook.get(
+            make_esi_url(f"universe/groups/{group_id}"),
+            reply=200,
+            response_json={
+                "category_id": category_id,
+                "group_id": group_id,
+                "name": group_name,
+                "published": True,
+                "types": [type_id],
+            },
+        )
+        pook.get(
+            make_esi_url(f"universe/types/{type_id}"),
+            reply=200,
+            response_json={
+                "capacity": 150,
+                "description": "",
+                "dogma_attributes": [],
+                "dogma_effects": [],
+                "graphic_id": 42,
+                "group_id": group_id,
+                "market_group_id": 666,
+                "mass": 997000,
+                "name": type_name,
+                "packaged_volume": 2500,
+                "portion_size": 1,
+                "published": True,
+                "radius": 39,
+                "type_id": type_id,
+                "volume": 16500,
+            },
+        )
 
-#     def test_should_load_all_types_with_enabled_sections(
-#         self, mock_update_or_create_eve_object
-#     ):
-#         # given
-#         mock_esi.client.Universe.get_universe_categories.return_value = (
-#             BravadoOperationStub([1])
-#         )
-#         # when
-#         load_all_types(["alpha", "bravo"])
-#         # then
-#         _, kwargs = mock_update_or_create_eve_object.delay.call_args
-#         self.assertEqual(kwargs["enabled_sections"], ["alpha", "bravo"])
+        # when
+        tasks.load_all_types()
+
+        # then
+        self.assertTrue(EveType.objects.filter(id=type_id).exists())
+
+    @pook.on
+    def test_should_load_all_types_with_enabled_sections(self):
+        # given
+        category_id = 65
+        category_name = "Structure"
+        group_id = 1406
+        group_name = "Refinery"
+        type_id = 35835
+        type_name = "Athanor"
+        graphic_id = 314
+        pook.get(
+            make_esi_url("universe/categories"),
+            reply=200,
+            response_json=[category_id],
+        )
+        pook.get(
+            make_esi_url(f"universe/categories/{category_id}"),
+            reply=200,
+            response_json={
+                "category_id": category_id,
+                "groups": [group_id],
+                "name": category_name,
+                "published": True,
+            },
+        )
+        pook.get(
+            make_esi_url(f"universe/groups/{group_id}"),
+            reply=200,
+            response_json={
+                "category_id": category_id,
+                "group_id": group_id,
+                "name": group_name,
+                "published": True,
+                "types": [type_id],
+            },
+        )
+        pook.get(
+            make_esi_url(f"universe/types/{type_id}"),
+            reply=200,
+            response_json={
+                "capacity": 150,
+                "description": "",
+                "dogma_attributes": [],
+                "dogma_effects": [],
+                "graphic_id": graphic_id,
+                "group_id": group_id,
+                "market_group_id": 666,
+                "mass": 997000,
+                "name": type_name,
+                "packaged_volume": 2500,
+                "portion_size": 1,
+                "published": True,
+                "radius": 39,
+                "type_id": type_id,
+                "volume": 16500,
+            },
+        )
+        pook.get(
+            make_esi_url(f"universe/graphics/{graphic_id}"),
+            reply=200,
+            response_json={
+                "graphic_id": 314,
+                "sof_dna": "cf7_t1:caldaribase:caldari",
+                "sof_fation_name": "caldaribase",
+                "sof_hull_name": "cf7_t1",
+                "sof_race_name": "caldari",
+            },
+        )
+
+        # when
+        tasks.load_all_types(["graphics"])
+
+        # then
+        obj = EveType.objects.get(id=type_id)
+        self.assertEqual(obj.eve_graphic.id, graphic_id)
+
+    @pook.on
+    def test_should_abort_when_esi_returns_no_categories(self):
+        # given
+        pook.get(
+            make_esi_url("universe/categories"),
+            reply=200,
+            response_json=[],
+        )
+
+        # when/then
+        with self.assertRaises(ValueError):
+            tasks.load_all_types()
 
 
 @override_settings(CELERY_ALWAYS_EAGER=True, CELERY_EAGER_PROPAGATES_EXCEPTIONS=True)
