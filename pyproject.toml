@@ -34,7 +34,7 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-test = ["coverage", "factory_boy", "pook", "requests-mock"]
+test = ["coverage", "factory_boy", "pook"]
 
 [project.urls]
 Documentation = "https://django-eveuniverse.readthedocs.io/en/latest/"

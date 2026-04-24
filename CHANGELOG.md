@@ -20,6 +20,7 @@ This release is a major update with several breaking changes.
 - Breaking Change: Removed support for Django 3.2
 - Breaking Change: Removed support for Python 3.8, 3.9
 - Breaking Change: Removed `EsiClientStub`, testdata feature -> Use test factories instead
+- Breaking Change: Removed evemicros package
 - Added test factories for all types
 - Removed outdated command `eveuniverse_fix_section_flags`
 - Pinned swagger spec file
