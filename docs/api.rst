@@ -74,19 +74,6 @@ Other tasks
 
 .. autofunction:: eveuniverse.tasks.update_market_prices
 
-Tools
-====================
-
-Testdata
--------------------
-
-.. automodule:: eveuniverse.tools.testdata
-    :members:
-
-.. seealso::
-    Please also see :ref:`developer-testdata` on how to create test data for your app.
-
-
 Web APIs
 ========
 

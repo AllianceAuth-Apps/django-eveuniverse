@@ -38,7 +38,7 @@ test-py310:
         - bash <(curl -s https://codecov.io/bash)
     parallel:
         matrix:
-            - DJANGO_VERSION: [django32, django42]
+            - DJANGO_VERSION: [django42]
 
 test-py311:
     extends: .tox_setup

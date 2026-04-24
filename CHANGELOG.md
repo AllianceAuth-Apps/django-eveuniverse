@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [2.0.0] - TBD
 
+This release is a major update with several breaking changes.
+
+- Switched to OpenAPI client from django-esi to replace deprecated Swagger client
+- No longer provides tools for generating test data
+- New minimum requirements: Python 3.10 / Django 4.2 / django-esi 8
+
 ### Changed
 
 - Breaking Change: Removed support for Django 3.2
@@ -17,6 +23,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - Removed outdated command `eveuniverse_fix_section_flags`
 - Pinned swagger spec file
 - Modernized HTTP related
+
+### Fixed
+
+- Does not fetch moons for EveSolarSystem when section is enabled
 
 ## [1.6.1] - 2026-04-11
 
