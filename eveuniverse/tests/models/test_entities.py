@@ -506,6 +506,7 @@ class TestEveEntityManager_FetchByNamesEsi(TestCase):
         # then
         self.assertSetEqual(queryset_pks(got), {character_id, alliance_id})
 
+    # FIXME: Reinstate
     # @pook.on
     # def test_should_make_multiple_esi_request_when_fetching_large_number_of_entities(
     #     self,

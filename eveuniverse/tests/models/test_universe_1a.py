@@ -1,11 +1,10 @@
 from unittest.mock import patch
 
 import pook
-from bravado.exception import HTTPNotFound
 from django.core.cache import cache
 from django.test import TestCase
 from django.test.utils import override_settings
-from esi.exceptions import HTTPServerError
+from esi.exceptions import HTTPClientError, HTTPServerError
 
 from eveuniverse.models import (
     EveAncestry,
@@ -101,8 +100,9 @@ class TestEveAncestry(TestCase):
         )
 
         # when/then
-        with self.assertRaises(HTTPNotFound):
+        with self.assertRaises(HTTPClientError) as ex:
             EveAncestry.objects.update_or_create_esi(id=666)
+            self.assertEqual(ex.exception.status_code, 404)
 
 
 class TestEveAsteroidBelt(TestCase):

@@ -4,11 +4,11 @@ import datetime as dt
 import logging
 from typing import Iterable, List, Optional
 
-from bravado.exception import HTTPError
 from celery import chain, shared_task
 from celery_once import QueueOnce as BaseQueueOnce
 from django.db.utils import OperationalError
 from django.utils.timezone import now
+from esi.exceptions import HTTPServerError
 
 from . import __title__
 from .app_settings import (
@@ -379,7 +379,7 @@ def update_stale_entities(
 
 
 @shared_task(
-    autoretry_for=(HTTPError,),
+    autoretry_for=(HTTPServerError,),
     retry_kwargs={"max_retries": 3},
     retry_backoff=True,
 )

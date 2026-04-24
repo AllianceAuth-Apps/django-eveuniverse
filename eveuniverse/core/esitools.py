@@ -14,5 +14,5 @@ def is_esi_online() -> bool:
 
     except (AttributeError, HTTPServerError, HTTPClientError):
         return False
-    return True
+
     return True

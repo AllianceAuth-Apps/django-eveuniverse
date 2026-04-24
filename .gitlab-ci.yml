@@ -34,31 +34,34 @@ test-py310:
     extends: .tox_setup
     image: python:3.10-bookworm
     script:
-        - tox -e py310-$DJANGO_VERSION
+        - tox -e py310-$DJANGO_VERSION-$ESI_VERSION
         - bash <(curl -s https://codecov.io/bash)
     parallel:
         matrix:
             - DJANGO_VERSION: [django42, django52]
+              ESI_VERSION: [esi8, esi9]
 
 test-py311:
     extends: .tox_setup
     image: python:3.11-bookworm
     script:
-        - tox -e py311-$DJANGO_VERSION
+        - tox -e py311-$DJANGO_VERSION-$ESI_VERSION
         - bash <(curl -s https://codecov.io/bash)
     parallel:
         matrix:
             - DJANGO_VERSION: [django42, django52]
+              ESI_VERSION: [esi8, esi9]
 
 test-py312:
     extends: .tox_setup
     image: python:3.12-bookworm
     script:
-        - tox -e py312-$DJANGO_VERSION
+        - tox -e py312-$DJANGO_VERSION-$ESI_VERSION
         - bash <(curl -s https://codecov.io/bash)
     parallel:
         matrix:
             - DJANGO_VERSION: [django42, django52]
+              ESI_VERSION: [esi8, esi9]
 
 test-docs:
     stage: test

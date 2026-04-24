@@ -27,6 +27,7 @@ This release is a major update with several breaking changes.
 - Pinned swagger spec file
 - Modernized HTTP related
 - Added support for Django 5.2
+- Added support for django-esi 9
 
 ### Fixed
 

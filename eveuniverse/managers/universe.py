@@ -3,11 +3,12 @@
 import datetime as dt
 import logging
 from collections import namedtuple
+from http import HTTPStatus
 from typing import Any, Dict, Iterable, List, Optional, Set, Tuple
 
-from bravado.exception import HTTPNotFound
 from django.db import models
 from django.utils.timezone import now
+from esi.exceptions import HTTPClientError
 
 from eveuniverse import __title__
 from eveuniverse.app_settings import EVEUNIVERSE_BULK_METHODS_BATCH_SIZE
@@ -138,9 +139,10 @@ class EveUniverseEntityModelManager(models.Manager):
             obj.set_updated_sections(updated_sections)
 
         else:
-            raise HTTPNotFound(
-                _FakeResponse(status_code=404),  # type: ignore
-                message=f"{self.model.__name__} object with id {id} not found",
+            raise HTTPClientError(
+                status_code=HTTPStatus.NOT_FOUND,
+                headers={},
+                data=f"{self.model.__name__} object with id {id} not found",
             )
         return obj, created
 
@@ -159,9 +161,10 @@ class EveUniverseEntityModelManager(models.Manager):
             if esi_pk in row and row[esi_pk] == id:
                 return row
 
-        raise HTTPNotFound(
-            _FakeResponse(status_code=404),  # type: ignore
-            message=f"{model_class.__name__} object with id {id} not found",
+        raise HTTPClientError(
+            status_code=HTTPStatus.NOT_FOUND,
+            headers={},
+            data=f"{model_class.__name__} object with id {id} not found",
         )
 
     def _fetch_from_esi(
