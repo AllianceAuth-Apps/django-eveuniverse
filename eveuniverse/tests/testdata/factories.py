@@ -1,5 +1,3 @@
-from eveuniverse.models import EveEntity
-
 _items = {
     40170698: {
         "itemID": 40170698,
@@ -115,12 +113,6 @@ def create_evemicros_response(*item_ids, ok=True):
         "ok": ok,
         "result": [_create_evemicros_item(item_id) for item_id in item_ids],
     }
-
-
-def create_eve_entity(**kwargs):
-    if "category" not in kwargs:
-        kwargs["category"] = EveEntity.CATEGORY_CHARACTER
-    return EveEntity.objects.create(**kwargs)
 
 
 def create_evesdeapi_response(*item_ids):

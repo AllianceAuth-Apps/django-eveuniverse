@@ -66,6 +66,12 @@ class TestEveEntityQuerySet(TestCase):
         pook.post(
             make_esi_url("universe/names"),
             reply=404,
+            json=[invalid.id, character.id],
+            response_json={"error": "invalid"},
+        )
+        pook.post(
+            make_esi_url("universe/names"),
+            reply=404,
             json=[invalid.id],
             response_json={"error": "invalid"},
         )

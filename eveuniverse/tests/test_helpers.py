@@ -8,7 +8,7 @@ from eveuniverse.helpers import (
 from eveuniverse.models import EveEntity
 from eveuniverse.utils import NoSocketsTestCase
 
-from .testdata.factories import create_eve_entity
+from .testdata.factories_2 import EveEntityCorporationFactory
 
 
 class TestHelpers(NoSocketsTestCase):
@@ -28,16 +28,16 @@ class TestHelpers(NoSocketsTestCase):
 class TestGetOrCreateEsiOrNone(NoSocketsTestCase):
     def test_return_obj_when_property_found(self):
         # given
-        create_eve_entity(id=1001, name="Alpha", category="corporation")
-        entry = {"type_id": 1001}
+        obj_1 = EveEntityCorporationFactory()
+        entry = {"type_id": obj_1.id}
         # when
-        obj: EveEntity = get_or_create_esi_or_none("type_id", entry, EveEntity)
+        obj_2: EveEntity = get_or_create_esi_or_none("type_id", entry, EveEntity)
         # then
-        self.assertEqual(obj.id, 1001)
+        self.assertEqual(obj_2, obj_1)
 
     def test_return_none_when_property_not_found(self):
         # given
-        create_eve_entity(id=1001, name="Alpha", category="corporation")
+        EveEntityCorporationFactory()
         entry = {}
         # when
         obj = get_or_create_esi_or_none("type_id", entry, EveEntity)

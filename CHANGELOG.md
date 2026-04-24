@@ -13,8 +13,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 - Breaking Change: Removed support for Django 3.2
 - Breaking Change: Removed support for Python 3.8, 3.9
-- Pinned swagger file
-- Modernized HTTP related tests
+- Breaking Change: Removed `EsiClientStub`, testdata feature -> Use test factories instead
+- Removed outdated command `eveuniverse_fix_section_flags`
+- Pinned swagger spec file
+- Modernized HTTP related
 
 ## [1.6.1] - 2026-04-11
 
