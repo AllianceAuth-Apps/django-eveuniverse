@@ -2,11 +2,51 @@
 
 from pathlib import Path
 
-from esi.clients import EsiClientProvider
+from esi.openapi_clients import ESIClientProvider
 
 from . import __version__
 
-spec_file = Path(__file__).parent / "swagger_2025-04-02.json"
-esi = EsiClientProvider(
-    app_info_text=f"django-eveuniverse v{__version__}", spec_file=spec_file
+spec_file = Path(__file__).parent / "openapi_2025-12-16.json"
+esi = ESIClientProvider(
+    compatibility_date="2025-12-16",
+    ua_appname="django-eveuniverse",
+    ua_version=__version__,
+    operations=[
+        "GetDogmaAttributes",
+        "GetDogmaAttributesAttributeId",
+        "GetDogmaEffects",
+        "GetDogmaEffectsEffectId",
+        "GetMarketsGroups",
+        "GetMarketsGroupsMarketGroupId",
+        "GetMarketsPrices",
+        "GetStatus",
+        "GetUniverseAncestries",
+        "GetUniverseAsteroidBeltsAsteroidBeltId",
+        "GetUniverseBloodlines",
+        "GetUniverseCategories",
+        "GetUniverseCategoriesCategoryId",
+        "GetUniverseConstellations",
+        "GetUniverseConstellationsConstellationId",
+        "GetUniverseFactions",
+        "GetUniverseGraphics",
+        "GetUniverseGraphicsGraphicId",
+        "GetUniverseGroups",
+        "GetUniverseGroupsGroupId",
+        "GetUniverseMoonsMoonId",
+        "GetUniversePlanetsPlanetId",
+        "GetUniverseRaces",
+        "GetUniverseRegions",
+        "GetUniverseRegionsRegionId",
+        "GetUniverseStargatesStargateId",
+        "GetUniverseStarsStarId",
+        "GetUniverseStationsStationId",
+        "GetUniverseSystems",
+        "GetUniverseSystemsSystemId",
+        "GetUniverseTypes",
+        "GetUniverseTypesTypeId",
+        "PostRoute",
+        "PostUniverseIds",
+        "PostUniverseNames",
+    ],
+    spec_file=spec_file,
 )

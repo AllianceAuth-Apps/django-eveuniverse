@@ -85,7 +85,11 @@ class TestEveMarketPriceManager(TestCase):
                     "average_price": average_price,
                     "type_id": et.id,
                 },
-                {"adjusted_price": 123.45, "average_price": 678.90, "type_id": 420},
+                {
+                    "adjusted_price": 123.45,
+                    "average_price": 678.90,
+                    "type_id": 420,
+                },
             ],
         )
 

@@ -5,6 +5,7 @@ from bravado.exception import HTTPNotFound
 from django.core.cache import cache
 from django.test import TestCase
 from django.test.utils import override_settings
+from esi.exceptions import HTTPServerError
 
 from eveuniverse.models import (
     EveAncestry,
@@ -20,7 +21,7 @@ from eveuniverse.models import (
     EveSolarSystem,
     EveType,
 )
-from eveuniverse.tests.testdata.factories_2 import (  # EveMoonFactory,
+from eveuniverse.tests.testdata.factories_2 import (
     EveBloodlineFactory,
     EveCategoryFactory,
     EveDogmaAttributeFactory,
@@ -372,7 +373,7 @@ class TestEveCategory(TestCase):
 @patch(MODELS_PATH + ".EVEUNIVERSE_LOAD_GRAPHICS", False)
 @patch(MODELS_PATH + ".EVEUNIVERSE_LOAD_DOGMAS", False)
 @patch(MODELS_PATH + ".EVEUNIVERSE_LOAD_MARKET_GROUPS", False)
-class TestEveCategoryUpdateAll(TestCase):
+class TestEveCategory_UpdateAll(TestCase):
     """These tests also cover the manager functionality shared among
     all entity models. (2/2)
     """
@@ -584,7 +585,7 @@ class TestEveCategoryUpdateAll(TestCase):
         )
 
         # when/then
-        with self.assertRaises(OSError):
+        with self.assertRaises(HTTPServerError):
             EveCategory.objects.update_or_create_all_esi(
                 include_children=False, wait_for_children=True
             )
@@ -965,4 +966,5 @@ class TestEveGroup(TestCase):
         self.assertTrue(obj.published)
 
 
+# -------
 # -------

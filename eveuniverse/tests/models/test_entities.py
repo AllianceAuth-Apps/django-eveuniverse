@@ -273,7 +273,7 @@ class TestEveEntityManager_ESI(TestCase):
         pook.post(
             make_esi_url("universe/names"),
             reply=404,
-            response_json={"errors": "not found"},
+            response_json={"error": "not found"},
         )
 
         # when

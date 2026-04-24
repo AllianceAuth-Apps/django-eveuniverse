@@ -11,7 +11,6 @@ from django.utils.timezone import now
 
 from eveuniverse import __title__
 from eveuniverse.app_settings import EVEUNIVERSE_BULK_METHODS_BATCH_SIZE
-from eveuniverse.helpers import get_or_create_esi_or_none
 from eveuniverse.providers import esi
 from eveuniverse.utils import LoggerAddTag
 
@@ -178,8 +177,10 @@ class EveUniverseEntityModelManager(models.Manager):
         else:
             params = {}
         category, method = self.model._esi_path_object()
-        esi_data = getattr(getattr(esi.client, category), method)(**params).results()
-        return esi_data
+        esi_data = getattr(getattr(esi.client, category), method)(**params).result()
+        if isinstance(esi_data, list):
+            return [x.model_dump() for x in esi_data]
+        return esi_data.model_dump()
 
     def update_or_create_all_esi(
         self,
@@ -238,7 +239,7 @@ class EveUniverseEntityModelManager(models.Manager):
     ):
         if self.model._has_esi_path_list():
             category, method = self.model._esi_path_list()
-            ids = getattr(getattr(esi.client, category), method)().results()
+            ids = getattr(getattr(esi.client, category), method)().result()
             for id in ids:
                 if wait_for_children:
                     self.update_or_create_esi(
@@ -521,17 +522,17 @@ class EveMarketPriceManager(models.Manager):
         updated_count = self.update_objs_from_esi_data(prices, minutes_until_stale)
         return updated_count
 
-    def fetch_data_from_esi(self) -> Dict[int, dict]:
+    def fetch_data_from_esi(self) -> List[object]:
         """Fetch market prices from ESI and return them."""
-        entries = esi.client.Market.get_markets_prices().results()
-        logger.info("Received %d market prices from ESI", len(entries))
-        return entries
+        prices = esi.client.Market.GetMarketsPrices().result()
+        logger.info("Received %d market prices from ESI", len(prices))
+        return prices
 
     def update_objs_from_esi_data(
-        self, prices: List[dict], minutes_until_stale: Optional[int] = None
+        self, prices: List[object], minutes_until_stale: Optional[int] = None
     ) -> int:
         """Update prices from provided ESI data."""
-        prices_2 = {int(obj["type_id"]): obj for obj in prices if "type_id" in obj}
+        prices_2 = {obj.type_id: obj for obj in prices}
         to_update, to_delete = self._identify_types_to_update(
             prices_2, minutes_until_stale
         )
@@ -576,13 +577,15 @@ class EveMarketPriceManager(models.Manager):
         self.filter(eve_type_id__in=to_delete).delete()
         logger.info("Deleted %d obsolete market prices", len(to_delete))
 
-    def _update_objs(self, prices: dict, types_need_updating: Set[int]) -> Set[int]:
+    def _update_objs(
+        self, prices: Dict[int, object], types_need_updating: Set[int]
+    ) -> Set[int]:
         existing_prices_query = self.filter(eve_type_id__in=types_need_updating)
         objs = existing_prices_query.in_bulk().values()
         for obj in objs:
             entry = prices[obj.eve_type_id]
-            obj.adjusted_price = entry.get("adjusted_price")
-            obj.average_price = entry.get("average_price")
+            obj.adjusted_price = entry.adjusted_price
+            obj.average_price = entry.average_price
             obj.updated_at = now()
 
         self.bulk_update(
@@ -594,14 +597,14 @@ class EveMarketPriceManager(models.Manager):
         updated_types = {obj.eve_type_id for obj in objs}
         return types_need_updating - updated_types
 
-    def _create_new_objs(self, prices: dict, types_to_create: Set[int]):
+    def _create_new_objs(self, prices: Dict[int, object], types_to_create: Set[int]):
         from eveuniverse.models import EveType
 
         objs = [
             self.model(
-                eve_type=get_or_create_esi_or_none("type_id", entry, EveType),
-                adjusted_price=entry.get("adjusted_price"),
-                average_price=entry.get("average_price"),
+                eve_type=EveType.objects.get_or_create_esi(id=type_id)[0],
+                adjusted_price=entry.adjusted_price,
+                average_price=entry.average_price,
             )
             for type_id, entry in prices.items()
             if type_id in types_to_create

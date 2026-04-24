@@ -1,14 +1,10 @@
 from eveuniverse.helpers import (
     EveEntityNameResolver,
     dict_hash,
-    get_or_create_esi_or_none,
     meters_to_au,
     meters_to_ly,
 )
-from eveuniverse.models import EveEntity
 from eveuniverse.utils import NoSocketsTestCase
-
-from .testdata.factories_2 import EveEntityCorporationFactory
 
 
 class TestHelpers(NoSocketsTestCase):
@@ -23,26 +19,6 @@ class TestHelpers(NoSocketsTestCase):
         self.assertEqual(meters_to_au(0), 0)
         with self.assertRaises(ValueError):
             meters_to_au("invalid")
-
-
-class TestGetOrCreateEsiOrNone(NoSocketsTestCase):
-    def test_return_obj_when_property_found(self):
-        # given
-        obj_1 = EveEntityCorporationFactory()
-        entry = {"type_id": obj_1.id}
-        # when
-        obj_2: EveEntity = get_or_create_esi_or_none("type_id", entry, EveEntity)
-        # then
-        self.assertEqual(obj_2, obj_1)
-
-    def test_return_none_when_property_not_found(self):
-        # given
-        EveEntityCorporationFactory()
-        entry = {}
-        # when
-        obj = get_or_create_esi_or_none("type_id", entry, EveEntity)
-        # then
-        self.assertIsNone(obj)
 
 
 class TestEveEntityNameResolver(NoSocketsTestCase):

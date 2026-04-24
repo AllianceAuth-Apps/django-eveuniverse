@@ -5,11 +5,12 @@ from __future__ import annotations
 import logging
 import warnings
 from collections import defaultdict
+from http import HTTPStatus
 from typing import TYPE_CHECKING, Any, Iterable, Optional, Set, Tuple
 
-from bravado.exception import HTTPNotFound
 from django.db import models
 from django.db.utils import IntegrityError
+from esi.exceptions import HTTPClientError
 
 from eveuniverse import __title__
 from eveuniverse.app_settings import EVEUNIVERSE_BULK_METHODS_BATCH_SIZE
@@ -167,12 +168,13 @@ class EveEntityManagerBase(EveUniverseEntityModelManager):
         result = defaultdict(list)
         names_2 = sorted(names)
         for chunk_names in chunks(names_2, _ESI_MAX_NAMES_PER_REQUEST):
-            result_chunk = esi.client.Universe.post_universe_ids(
-                names=chunk_names
-            ).results()
-            for category, entities in result_chunk.items():
+            result_chunk = esi.client.Universe.PostUniverseIds(
+                body=chunk_names
+            ).result()
+            for category, entities in result_chunk.model_dump().items():
                 if entities:
                     result[category] += entities
+
         result_compressed = {
             category: entities for category, entities in result.items() if entities
         }
@@ -290,15 +292,19 @@ class EveEntityManagerBase(EveUniverseEntityModelManager):
         if id in _ESI_INVALID_IDS:
             logger.info("%s: ID is not valid", id)
             return None, False
+
         try:
-            result = esi.client.Universe.post_universe_names(ids=[id]).results()
-        except HTTPNotFound:
-            logger.info("%s: ID is not valid", id)
-            return None, False
+            result = esi.client.Universe.PostUniverseNames(body=[id]).result()
+        except HTTPClientError as ex:
+            if ex.status_code == HTTPStatus.NOT_FOUND:
+                logger.info("%s: ID is not valid", id)
+                return None, False
+            raise ex
+
         item = result[0]
         return self.update_or_create(
-            id=item.get("id"),
-            defaults={"name": item.get("name"), "category": item.get("category")},
+            id=item.id,
+            defaults={"name": item.name, "category": item.category},
         )
 
     def update_or_create_all_esi(
@@ -327,24 +333,30 @@ class EveEntityManagerBase(EveUniverseEntityModelManager):
     def _resolve_entities_from_esi(self, ids: list, depth: int = 1):
         resolved_counter = 0
         try:
-            items = esi.client.Universe.post_universe_names(ids=ids).results()
-        except HTTPNotFound:
-            # if API fails to resolve all IDs, we divide and conquer,
-            # trying to resolve each half of the ids separately
-            if len(ids) > 1 and depth < self._MAX_DEPTH:
-                resolved_counter += self._resolve_entities_from_esi(ids[::2], depth + 1)
-                resolved_counter += self._resolve_entities_from_esi(
-                    ids[1::2], depth + 1
-                )
+            items = esi.client.Universe.PostUniverseNames(body=ids).result()
+        except HTTPClientError as ex:
+            if ex.status_code == HTTPStatus.NOT_FOUND:
+                # if API fails to resolve all IDs, we divide and conquer,
+                # trying to resolve each half of the ids separately
+                if len(ids) > 1 and depth < self._MAX_DEPTH:
+                    resolved_counter += self._resolve_entities_from_esi(
+                        ids[::2], depth + 1
+                    )
+                    resolved_counter += self._resolve_entities_from_esi(
+                        ids[1::2], depth + 1
+                    )
+                else:
+                    logger.warning("Failed to resolve invalid IDs: %s", ids)
             else:
-                logger.warning("Failed to resolve invalid IDs: %s", ids)
+                raise ex
+
         else:
             resolved_counter += len(items)
             for item in items:
                 try:
                     self.update_or_create(
-                        id=item["id"],
-                        defaults={"name": item["name"], "category": item["category"]},
+                        id=item.id,
+                        defaults={"name": item.name, "category": item.category},
                     )
                 except IntegrityError:
                     pass

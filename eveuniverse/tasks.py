@@ -18,7 +18,7 @@ from .app_settings import (
 )
 from .constants import POST_UNIVERSE_NAMES_MAX_ITEMS, EveCategoryId
 from .core.esitools import is_esi_online
-from .models import EveCategory, EveEntity, EveMarketPrice, EveRegion, EveType
+from .models import EveCategory, EveEntity, EveMarketPrice, EveType
 from .models.base import EveUniverseEntityModel, determine_effective_sections
 from .providers import esi
 from .utils import LoggerAddTag, chunks
@@ -173,9 +173,8 @@ def load_map(enabled_sections: Optional[List[str]] = None) -> None:
         "and the following additional entities if related to the map: %s",
         ", ".join(determine_effective_sections(enabled_sections)),
     )
-    category, method = EveRegion._esi_path_list()
-    all_ids = getattr(getattr(esi.client, category), method)().results()
-    for id in all_ids:
+    region_ids = esi.client.Universe.GetUniverseRegions().result()
+    for id in region_ids:
         update_or_create_eve_object.delay(
             model_name="EveRegion",
             id=id,
@@ -198,7 +197,7 @@ def load_all_types(enabled_sections: Optional[List[str]] = None) -> None:
         ", ".join(determine_effective_sections(enabled_sections)),
     )
     category, method = EveCategory._esi_path_list()
-    result = getattr(getattr(esi.client, category), method)().results()
+    result = getattr(getattr(esi.client, category), method)().result()
     if not result:
         raise ValueError("Did not receive category IDs from ESI.")
     category_ids = sorted(result)

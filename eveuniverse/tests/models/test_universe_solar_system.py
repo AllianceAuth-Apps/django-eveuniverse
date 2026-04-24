@@ -629,10 +629,10 @@ class TestEveSolarSystem_JumpsTo(TestCase):
         a = EveSolarSystemLowSecFactory()
         b = EveSolarSystemLowSecFactory()
         c = EveSolarSystemLowSecFactory()
-        pook.get(
+        pook.post(
             make_esi_url(f"route/{a.id}/{c.id}"),
             reply=200,
-            response_json=[a.id, b.id, c.id],
+            response_json={"route": [a.id, b.id, c.id]},
         )
 
         # when/then
@@ -643,7 +643,7 @@ class TestEveSolarSystem_JumpsTo(TestCase):
         # given
         a = EveSolarSystemLowSecFactory()
         b = EveSolarSystemLowSecFactory()
-        pook.get(
+        pook.post(
             make_esi_url(f"route/{a.id}/{b.id}"),
             reply=404,
             response_json={"error": "not found"},
@@ -657,7 +657,7 @@ class TestEveSolarSystem_JumpsTo(TestCase):
         # given
         a = EveSolarSystemLowSecFactory()
         b = EveSolarSystemWSpaceFactory()
-        pook.get(
+        pook.post(
             make_esi_url(f"route/{a.id}/{b.id}"),
             reply=500,
             response_json=[],
@@ -672,7 +672,7 @@ class TestEveSolarSystem_JumpsTo(TestCase):
         # given
         a = EveSolarSystemLowSecFactory()
         b = EveSolarSystemTrigSpaceFactory()
-        pook.get(
+        pook.post(
             make_esi_url(f"route/{a.id}/{b.id}"),
             reply=500,
             response_json=[],
@@ -695,10 +695,10 @@ class TestEveSolarSystem_RouteTo(TestCase):
         a = EveSolarSystemLowSecFactory()
         b = EveSolarSystemLowSecFactory()
         c = EveSolarSystemLowSecFactory()
-        pook.get(
+        pook.post(
             make_esi_url(f"route/{a.id}/{c.id}"),
             reply=200,
-            response_json=[a.id, b.id, c.id],
+            response_json={"route": [a.id, b.id, c.id]},
         )
 
         # when
@@ -713,7 +713,7 @@ class TestEveSolarSystem_RouteTo(TestCase):
         # given
         a = EveSolarSystemLowSecFactory()
         b = EveSolarSystemLowSecFactory()
-        pook.get(
+        pook.post(
             make_esi_url(f"route/{a.id}/{b.id}"),
             reply=404,
             response_json={"error": "not found"},
@@ -730,10 +730,10 @@ class TestEveSolarSystem_RouteTo(TestCase):
         # given
         a = EveSolarSystemLowSecFactory()
         b = EveSolarSystemWSpaceFactory()
-        pook.get(
+        pook.post(
             make_esi_url(f"route/{a.id}/{b.id}"),
             reply=500,
-            response_json=[],
+            response_json={},
         )
 
         # when/then
@@ -745,10 +745,10 @@ class TestEveSolarSystem_RouteTo(TestCase):
         # given
         a = EveSolarSystemLowSecFactory()
         b = EveSolarSystemTrigSpaceFactory()
-        pook.get(
+        pook.post(
             make_esi_url(f"route/{a.id}/{b.id}"),
             reply=500,
-            response_json=[],
+            response_json={},
         )
 
         # when/then

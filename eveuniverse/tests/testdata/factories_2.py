@@ -37,7 +37,7 @@ factory.Faker._DEFAULT_LOCALE = "en_US"
 
 _POSITION_MIN = -100_000_000_000_000_000
 _POSITION_MAX = 100_000_000_000_000_000
-_BASE_URL = "https://esi.evetech.net/latest/"
+_BASE_URL = "https://esi.evetech.net/"
 
 
 def make_esi_url(path: str) -> str:
@@ -46,7 +46,7 @@ def make_esi_url(path: str) -> str:
     if path.endswith("/"):
         raise ValueError("path can not end with a slash")
 
-    url = urllib.parse.urljoin(_BASE_URL, path + "/")
+    url = urllib.parse.urljoin(_BASE_URL, path)
     return url
 
 
