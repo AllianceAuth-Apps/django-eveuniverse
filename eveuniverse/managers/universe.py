@@ -102,8 +102,9 @@ class EveUniverseEntityModelManager(models.Manager):
 
         id = int(id)
         effective_sections = determine_effective_sections(enabled_sections)
+        esi_data = self._fetch_from_esi(id, effective_sections)
         eve_data_obj = self._transform_esi_response_for_list_endpoints(
-            self.model, id, self._fetch_from_esi(id=id)
+            self.model, id, esi_data
         )
         if eve_data_obj:
             defaults = self.model._defaults_from_esi_obj(
@@ -346,8 +347,7 @@ class EvePlanetManager(EveUniverseEntityModelManager):
                 return esi_data
 
         raise ValueError(
-            f"Failed to find planet {id} in solar system response for {system_id} "
-            f"- data error"
+            f"Failed to find planet {id} in solar system response for {system_id}"
         )
 
 

@@ -17,8 +17,9 @@ from eveuniverse.models import (
     EveRegion,
     EveSolarSystem,
 )
-from eveuniverse.tests.testdata.factories_2 import (  # EveMoonFactory,
+from eveuniverse.tests.testdata.factories_2 import (
     EveMarketPriceFactory,
+    EveMoonFactory,
     EvePlanetFactory,
     EveSolarSystemFactory,
     EveTypeFactory,
@@ -506,90 +507,69 @@ class TestEvePlanet(TestCase):
         self.assertFalse(EveAsteroidBelt.objects.filter(id=belt_id).exists())
         self.assertFalse(EveMoon.objects.filter(id=moon_id).exists())
 
-    # FIXME: Does not work as expected, why?
-    # @patch(MODELS_PATH + ".EVEUNIVERSE_LOAD_ASTEROID_BELTS", False)
-    # @patch(MODELS_PATH + ".EVEUNIVERSE_LOAD_MOONS", True)
-    # @pook.on
-    # def test_does_not_update_children_on_get_by_default(self):
-    #     # given
-    #     planet = EvePlanetFactory()
-    #     solar_system: EveSolarSystem = planet.eve_solar_system
-    #     pook.get(
-    #         make_esi_url(f"universe/planets/{planet.id}"),
-    #         reply=200,
-    #         response_json={
-    #             "name": planet.name,
-    #             "planet_id": planet.id,
-    #             "position": PositionFactory(),
-    #             "system_id": solar_system.id,
-    #             "type_id": planet.eve_type.id,
-    #         },
-    #     )
-    #     moon_name = "Alpha"
-    #     moon = EveMoonFactory(eve_planet=planet, name=moon_name)
-    #     pook.get(
-    #         make_esi_url(f"universe/moons/{moon.id}"),
-    #         reply=200,
-    #         response_json={
-    #             "moon_id": moon.id,
-    #             "name": "other name",
-    #             "position": PositionFactory(),
-    #             "system_id": solar_system.id,
-    #         },
-    #     )
-    #     pook.get(
-    #         make_esi_url(f"universe/systems/{solar_system.id}"),
-    #         reply=200,
-    #         response_json={
-    #             "constellation_id": solar_system.eve_constellation.id,
-    #             "name": "Enaluri",
-    #             "planets": [
-    #                 {
-    #                     "moons": [moon.id],
-    #                     "planet_id": planet.id,
-    #                 }
-    #             ],
-    #             "position": {
-    #                 "x": solar_system.position_x,
-    #                 "y": solar_system.position_y,
-    #                 "z": solar_system.position_z,
-    #             },
-    #             "security_status": solar_system.security_status,
-    #             "system_id": solar_system.id,
-    #         },
-    #         persist=True,
-    #     )
+    @patch(MODELS_PATH + ".EVEUNIVERSE_LOAD_MOONS", True)
+    @pook.on
+    def test_should_update_children(self):
+        # given
+        planet = EvePlanetFactory()
+        solar_system: EveSolarSystem = planet.eve_solar_system
+        moon = EveMoonFactory(eve_planet=planet)
+        planet_name = "Enaluri I"
+        pook.get(
+            make_esi_url(f"universe/planets/{planet.id}"),
+            reply=200,
+            response_json={
+                "name": planet_name,
+                "planet_id": planet.id,
+                "position": PositionFactory(),
+                "system_id": solar_system.id,
+                "type_id": planet.eve_type.id,
+            },
+        )
+        pook.get(
+            make_esi_url(f"universe/moons/{moon.id}"),
+            reply=200,
+            response_json={
+                "moon_id": moon.id,
+                "name": "other name",
+                "position": PositionFactory(),
+                "system_id": solar_system.id,
+            },
+        )
+        pook.get(
+            make_esi_url(f"universe/systems/{solar_system.id}"),
+            reply=200,
+            response_json={
+                "constellation_id": solar_system.eve_constellation.id,
+                "name": "Enaluri",
+                "planets": [
+                    {
+                        "moons": [moon.id],
+                        "planet_id": planet.id,
+                    }
+                ],
+                "position": {
+                    "x": solar_system.position_x,
+                    "y": solar_system.position_y,
+                    "z": solar_system.position_z,
+                },
+                "security_status": solar_system.security_status,
+                "system_id": solar_system.id,
+            },
+            persist=True,
+        )
 
-    #     # when
-    #     EvePlanet.objects.get_or_create_esi(id=planet.id, include_children=True)
+        # when
+        obj: EvePlanet
+        obj, created = EvePlanet.objects.update_or_create_esi(
+            id=planet.id, include_children=True
+        )
 
-    #     # then
-    #     moon.refresh_from_db()
-    #     self.assertEqual(moon.name, moon_name)
-
-    # @patch(MODELS_PATH + ".EVEUNIVERSE_LOAD_MOONS", True)
-    # @pook.on
-    # def test_does_not_update_children_on_update(self):
-    #     # create scenario
-    #     obj, created = EvePlanet.objects.update_or_create_esi(
-    #         id=40349467,
-    #         include_children=True,
-    #     )
-    #     self.assertTrue(created)
-    #     self.assertEqual(obj.id, 40349467)
-    #     self.assertEqual(obj.eve_type, EveType.objects.get(id=2016))
-    #     self.assertEqual(obj.eve_solar_system, EveSolarSystem.objects.get(id=30045339))
-    #     self.assertTrue(EveMoon.objects.filter(id=40349468).exists())
-    #     moon = EveMoon.objects.get(id=40349468)
-    #     moon.name = "Dummy"
-    #     moon.save()
-
-    #     # action
-    #     EvePlanet.objects.update_or_create_esi(id=40349467, include_children=True)
-
-    #     # validate
-    #     moon.refresh_from_db()
-    #     self.assertNotEqual(moon.name, "Dummy")
+        # then
+        self.assertFalse(created)
+        self.assertEqual(obj.name, planet_name)
+        moon.refresh_from_db()
+        self.assertEqual(moon.name, "other name")
 
     @pook.on
     def test_can_return_planet_type_name(self):

@@ -335,6 +335,7 @@ class TestEveSolarSystem_Sections(TestCase):
                 "security_status": security_status,
                 "system_id": solar_system_id,
             },
+            persist=True,
         )
         pook.get(
             make_esi_url(f"universe/moons/{moon_id}"),
@@ -345,6 +346,7 @@ class TestEveSolarSystem_Sections(TestCase):
                 "position": position,
                 "system_id": solar_system_id,
             },
+            persist=True,
         )
         planet_type = EveTypeFactory()
         pook.get(
@@ -357,18 +359,15 @@ class TestEveSolarSystem_Sections(TestCase):
                 "system_id": solar_system_id,
                 "type_id": planet_type.id,
             },
+            persist=True,
         )
 
         # when
         solar_system: EveSolarSystem
-        solar_system, _ = EveSolarSystem.objects.get_or_create_esi(
+        solar_system, _ = EveSolarSystem.objects.update_or_create_esi(
             id=solar_system_id,
             include_children=True,
-            enabled_sections=[
-                EveSolarSystem.Section.PLANETS,
-                EvePlanet.Section.ASTEROID_BELTS,
-                EvePlanet.Section.MOONS,
-            ],
+            enabled_sections=[EveSolarSystem.Section.PLANETS, EvePlanet.Section.MOONS],
         )
 
         # then
