@@ -1,6 +1,7 @@
 """Eve Entity tests."""
 
 from typing import NamedTuple
+from unittest.mock import patch
 
 import pook
 from django.core.cache import cache
@@ -19,104 +20,22 @@ from eveuniverse.tests.testdata.factories_2 import (
     make_esi_url,
 )
 
+MODULE_PATH = "eveuniverse.managers.entities"
 
-class TestEveEntityQuerySet(TestCase):
-    @classmethod
-    def setUpClass(cls):
-        super().setUpClass()
-        cache.clear()
 
-    @pook.on
-    def test_can_update_entities_from_esi(self):
+class TestEveEntity_Model(TestCase):
+    def test_repr(self):
         # given
-        character = EveEntityCharacterFactory()
-        corporation = EveEntityCorporationFactory()
-        pook.post(
-            make_esi_url("universe/names"),
-            reply=200,
-            response_json=[
-                {"category": "character", "id": character.id, "name": "Alpha"},
-                {"category": "corporation", "id": corporation.id, "name": "Bravo"},
-            ],
+        obj = EveEntity(
+            id=1001, name="Bruce Wayne", category=EveEntity.CATEGORY_CHARACTER
+        )
+        # when/then
+        self.assertEqual(
+            repr(obj), "EveEntity(category='character', id=1001, name='Bruce Wayne')"
         )
 
-        # when
-        got = EveEntity.objects.all().update_from_esi()
 
-        # then
-        self.assertEqual(got, 2)
-        character.refresh_from_db()
-        self.assertEqual(character.name, "Alpha")
-        self.assertEqual(character.category, EveEntity.CATEGORY_CHARACTER)
-        corporation.refresh_from_db()
-        self.assertEqual(corporation.name, "Bravo")
-        self.assertEqual(corporation.category, EveEntity.CATEGORY_CORPORATION)
-
-    @pook.on
-    def test_can_divide_and_conquer(self):
-        # given
-        character = EveEntityCharacterFactory()
-        invalid = EveEntityFactory(id=666, name="", category="")
-        pook.post(
-            make_esi_url("universe/names"),
-            reply=404,
-            json=[character.id, invalid.id],
-            response_json={"error": "invalid"},
-        )
-        pook.post(
-            make_esi_url("universe/names"),
-            reply=404,
-            json=[invalid.id, character.id],
-            response_json={"error": "invalid"},
-        )
-        pook.post(
-            make_esi_url("universe/names"),
-            reply=404,
-            json=[invalid.id],
-            response_json={"error": "invalid"},
-        )
-        pook.post(
-            make_esi_url("universe/names"),
-            reply=200,
-            json=[character.id],
-            response_json=[
-                {"category": "character", "id": character.id, "name": "Alpha"},
-            ],
-        )
-
-        # when
-        got = EveEntity.objects.all().update_from_esi()
-
-        # then
-        self.assertEqual(got, 1)
-        character.refresh_from_db()
-        self.assertEqual(character.name, "Alpha")
-        self.assertEqual(character.category, EveEntity.CATEGORY_CHARACTER)
-
-    @pook.on
-    def test_can_ignore_invalid_ids(self):
-        # given
-        character = EveEntityCharacterFactory()
-        EveEntityFactory(id=1, name="", category="")
-        pook.post(
-            make_esi_url("universe/names"),
-            reply=200,
-            response_json=[
-                {"category": "character", "id": character.id, "name": "Alpha"},
-            ],
-        )
-
-        # when
-        got = EveEntity.objects.all().update_from_esi()
-
-        # then
-        self.assertEqual(got, 1)
-        character.refresh_from_db()
-        self.assertEqual(character.name, "Alpha")
-        self.assertEqual(character.category, EveEntity.CATEGORY_CHARACTER)
-
-
-class TestEveEntityModel(TestCase):
+class TestEveEntity_IsNPC(TestCase):
     def test_is_npc_1(self):
         """when entity is NPC character, then return True"""
         obj = EveEntity(id=3019583, category=EveEntity.CATEGORY_CHARACTER)
@@ -154,16 +73,8 @@ class TestEveEntityModel(TestCase):
         obj = EveEntity(id=1000274, category=EveEntity.CATEGORY_CORPORATION)
         self.assertFalse(obj.is_npc_starter_corporation)
 
-    def test_repr(self):
-        # given
-        obj = EveEntity(
-            id=1001, name="Bruce Wayne", category=EveEntity.CATEGORY_CHARACTER
-        )
-        # when/then
-        self.assertEqual(
-            repr(obj), "EveEntity(category='character', id=1001, name='Bruce Wayne')"
-        )
 
+class TestEveEntity_IconURL(TestCase):
     def test_can_create_icon_urls_alliance(self):
         obj = EveEntity(id=3001, category=EveEntity.CATEGORY_ALLIANCE)
         expected = "https://images.evetech.net/alliances/3001/logo?size=128"
@@ -185,7 +96,135 @@ class TestEveEntityModel(TestCase):
         self.assertEqual(obj.icon_url(128), expected)
 
 
-class TestEveEntityManagerESI(TestCase):
+class TestEveEntity_ProfileUrl(TestCase):
+    def test_should_handle_alliance(self):
+        # given
+        obj = EveEntityFactory(
+            id=3001, name="Wayne Enterprises", category=EveEntity.CATEGORY_ALLIANCE
+        )
+        # when/then
+        self.assertEqual(
+            obj.profile_url, "https://evemaps.dotlan.net/alliance/Wayne_Enterprises"
+        )
+
+    def test_should_handle_character(self):
+        # given
+        obj = EveEntityFactory(
+            id=1001, name="Bruce Wayne", category=EveEntity.CATEGORY_CHARACTER
+        )
+        # when/then
+        self.assertEqual(obj.profile_url, "https://evewho.com/character/1001")
+
+    def test_should_handle_corporation(self):
+        # given
+        obj = EveEntityFactory(
+            id=2001, name="Wayne Technologies", category=EveEntity.CATEGORY_CORPORATION
+        )
+        # when/then
+        self.assertEqual(
+            obj.profile_url, "https://evemaps.dotlan.net/corp/Wayne_Technologies"
+        )
+
+    def test_should_handle_faction(self):
+        # given
+        obj = EveEntityFactory(
+            id=99, name="Amarr Empire", category=EveEntity.CATEGORY_FACTION
+        )
+        # when/then
+        self.assertEqual(
+            obj.profile_url, "https://evemaps.dotlan.net/factionwarfare/Amarr_Empire"
+        )
+
+    def test_should_handle_inventory_type(self):
+        # given
+        obj = EveEntityFactory(
+            id=603, name="Merlin", category=EveEntity.CATEGORY_INVENTORY_TYPE
+        )
+        # when/then
+        self.assertEqual(
+            obj.profile_url, "https://www.kalkoken.org/apps/eveitems/?typeId=603"
+        )
+
+    def test_should_handle_solar_system(self):
+        # given
+        obj = EveEntityFactory(
+            id=30004984, name="Abune", category=EveEntity.CATEGORY_SOLAR_SYSTEM
+        )
+        # when/then
+        self.assertEqual(obj.profile_url, "https://evemaps.dotlan.net/system/Abune")
+
+    def test_should_handle_station(self):
+        # given
+        obj = EveEntityFactory(
+            id=60003760,
+            name="Jita IV - Moon 4 - Caldari Navy Assembly Plant",
+            category=EveEntity.CATEGORY_STATION,
+        )
+        # when/then
+        self.assertEqual(
+            obj.profile_url,
+            "https://evemaps.dotlan.net/station/Jita_IV_-_Moon_4_-_Caldari_Navy_Assembly_Plant",
+        )
+
+    def test_should_return_empty_string_for_undefined_category(self):
+        # given
+        obj = EveEntityFactory(
+            id=99, name="Wayne Technologies", category=EveEntity.CATEGORY_CONSTELLATION
+        )
+        self.assertEqual(obj.profile_url, "")
+
+
+class TestEveEntity_CategoryChecks(TestCase):
+    def test_all(self):
+        alliance = EveEntityAllianceFactory()
+        character = EveEntityCharacterFactory()
+        constellation = EveEntity(category=EveEntity.CATEGORY_CONSTELLATION)
+        corporation = EveEntityCorporationFactory()
+        faction = EveEntity(category=EveEntity.CATEGORY_FACTION)
+        inventory_type = EveEntity(category=EveEntity.CATEGORY_INVENTORY_TYPE)
+        region = EveEntity(category=EveEntity.CATEGORY_REGION)
+        solar_system = EveEntity(category=EveEntity.CATEGORY_SOLAR_SYSTEM)
+        station = EveEntity(category=EveEntity.CATEGORY_STATION)
+        unresolved = EveEntityUnresolvedFactory()
+        all_entities = [
+            alliance,
+            character,
+            constellation,
+            corporation,
+            faction,
+            inventory_type,
+            region,
+            solar_system,
+            station,
+            unresolved,
+        ]
+
+        class Case(NamedTuple):
+            name: str
+            obj: object
+            prop_name: str = ""
+
+        cases = [
+            Case("alliance", alliance),
+            Case("character", character),
+            Case("constellation", constellation),
+            Case("corporation", corporation),
+            Case("faction", faction),
+            Case("inventory_type", inventory_type, "is_type"),
+            Case("region", region),
+            Case("solar_system", solar_system),
+            Case("station", station),
+        ]
+
+        for tc in cases:
+            with self.subTest(name=tc.name):
+                prop_name = tc.prop_name if tc.prop_name else f"is_{tc.name}"
+                self.assertTrue(getattr(tc.obj, prop_name))
+                for obj in [o for o in all_entities if o != tc.obj]:
+                    self.assertFalse(getattr(obj, prop_name))
+
+
+class TestEveEntityManager_ESI(TestCase):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
@@ -429,57 +468,12 @@ class TestEveEntityManagerESI(TestCase):
         self.assertEqual(resolver.to_name(obj_2_id), "Bravo")
 
 
-class TestEveEntity_CategoryChecks(TestCase):
-    def test_all(self):
-        alliance = EveEntityAllianceFactory()
-        character = EveEntityCharacterFactory()
-        constellation = EveEntity(category=EveEntity.CATEGORY_CONSTELLATION)
-        corporation = EveEntityCorporationFactory()
-        faction = EveEntity(category=EveEntity.CATEGORY_FACTION)
-        inventory_type = EveEntity(category=EveEntity.CATEGORY_INVENTORY_TYPE)
-        region = EveEntity(category=EveEntity.CATEGORY_REGION)
-        solar_system = EveEntity(category=EveEntity.CATEGORY_SOLAR_SYSTEM)
-        station = EveEntity(category=EveEntity.CATEGORY_STATION)
-        unresolved = EveEntityUnresolvedFactory()
-        all_entities = [
-            alliance,
-            character,
-            constellation,
-            corporation,
-            faction,
-            inventory_type,
-            region,
-            solar_system,
-            station,
-            unresolved,
-        ]
+class TestEveEntityManager_FetchByNamesEsi(TestCase):
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cache.clear()
 
-        class Case(NamedTuple):
-            name: str
-            obj: object
-            prop_name: str = ""
-
-        cases = [
-            Case("alliance", alliance),
-            Case("character", character),
-            Case("constellation", constellation),
-            Case("corporation", corporation),
-            Case("faction", faction),
-            Case("inventory_type", inventory_type, "is_type"),
-            Case("region", region),
-            Case("solar_system", solar_system),
-            Case("station", station),
-        ]
-
-        for tc in cases:
-            with self.subTest(name=tc.name):
-                prop_name = tc.prop_name if tc.prop_name else f"is_{tc.name}"
-                self.assertTrue(getattr(tc.obj, prop_name))
-                for obj in [o for o in all_entities if o != tc.obj]:
-                    self.assertFalse(getattr(obj, prop_name))
-
-
-class TestEveEntityManagerFetchEntitiesByName(TestCase):
     @pook.on
     def test_can_entities_by_name_from_esi(self):
         # given
@@ -503,18 +497,16 @@ class TestEveEntityManagerFetchEntitiesByName(TestCase):
                 "systems": [],
             },
         )
+
         # when
-        result: QuerySet[EveEntity] = EveEntity.objects.fetch_by_names_esi(
+        got: QuerySet[EveEntity] = EveEntity.objects.fetch_by_names_esi(
             [character_name, alliance_name]
         )
 
         # then
-        self.assertSetEqual(
-            queryset_pks(result),
-            queryset_pks(EveEntity.objects.filter(id__in=[character_id, alliance_id])),
-        )
+        self.assertSetEqual(queryset_pks(got), {character_id, alliance_id})
 
-    # FIXME: Temporary commented out
+    # @pook.on
     # def test_should_make_multiple_esi_request_when_fetching_large_number_of_entities(
     #     self,
     # ):
@@ -534,149 +526,146 @@ class TestEveEntityManagerFetchEntitiesByName(TestCase):
     #     self.assertEqual(mock_esi.client.Universe.post_universe_ids.call_count, 2)
     #     self.assertEqual(len(result), 600)
 
-    # def test_should_fetch_unknown_entities_from_esi_only(self):
-    #     # given
-    #     mock_esi.client.Universe.post_universe_ids.return_value = BravadoOperationStub(
-    #         {
-    #             "characters": [
-    #                 {"id": 9991, "name": "alpha"},
-    #                 {"id": 9992, "name": "bravo"},
-    #             ],
-    #             "corporations": [
-    #                 {"id": 9993, "name": "charlie"},
-    #             ],
-    #         }
-    #     )
-    #     EveEntityFactory(
-    #         id=1001, name="Bruce Wayne", category=EveEntity.CATEGORY_CHARACTER
-    #     )
-    #     # when
-    #     result_qs = EveEntity.objects.fetch_by_names_esi(
-    #         ["Bruce Wayne", "alpha", "bravo", "charlie"]
-    #     )
-    #     # then
-    #     self.assertTrue(mock_esi.client.Universe.post_universe_ids.called)
-    #     _, kwargs = mock_esi.client.Universe.post_universe_ids.call_args
-    #     self.assertSetEqual(set(kwargs["names"]), {"alpha", "bravo", "charlie"})
-    #     objs: Dict[int, EveEntity] = {obj.id: obj for obj in result_qs}
-    #     self.assertSetEqual(set(objs.keys()), {1001, 9991, 9992, 9993})
-    #     self.assertEqual(objs[1001].name, "Bruce Wayne")
-    #     self.assertTrue(objs[1001].is_character)
-    #     self.assertEqual(objs[9991].name, "alpha")
-    #     self.assertTrue(objs[9991].is_character)
-    #     self.assertEqual(objs[9992].name, "bravo")
-    #     self.assertTrue(objs[9992].is_character)
-    #     self.assertEqual(objs[9993].name, "charlie")
-    #     self.assertTrue(objs[9993].is_corporation)
-
-    # def test_should_fetch_all_names_when_requested(self):
-    #     # given
-    #     mock_esi.client.Universe.post_universe_ids.return_value = BravadoOperationStub(
-    #         {
-    #             "characters": [
-    #                 {"id": 9991, "name": "alpha"},
-    #                 {"id": 1001, "name": "Bruce Wayne"},
-    #             ],
-    #         }
-    #     )
-    #     EveEntityFactory(
-    #         id=1001, name="Bruce Wayne", category=EveEntity.CATEGORY_FACTION
-    #     )
-    #     # when
-    #     result_qs = EveEntity.objects.fetch_by_names_esi(
-    #         ["Bruce Wayne", "alpha"], update=True
-    #     )
-    #     # then
-    #     self.assertTrue(mock_esi.client.Universe.post_universe_ids.called)
-    #     _, kwargs = mock_esi.client.Universe.post_universe_ids.call_args
-    #     self.assertSetEqual(set(kwargs["names"]), {"Bruce Wayne", "alpha"})
-    #     objs: Dict[int, EveEntity] = {obj.id: obj for obj in result_qs}
-    #     self.assertSetEqual(set(objs.keys()), {1001, 9991})
-    #     self.assertEqual(objs[1001].name, "Bruce Wayne")
-    #     self.assertTrue(objs[1001].is_character)
-    #     self.assertEqual(objs[9991].name, "alpha")
-    #     self.assertTrue(objs[9991].is_character)
-
-
-class TestEveEntity_ProfileUrl(TestCase):
-    def test_should_handle_alliance(self):
+    @pook.on
+    def test_should_make_multiple_esi_request_when_fetching_many_entities(self):
         # given
-        obj = EveEntityFactory(
-            id=3001, name="Wayne Enterprises", category=EveEntity.CATEGORY_ALLIANCE
-        )
-        # when/then
-        self.assertEqual(
-            obj.profile_url, "https://evemaps.dotlan.net/alliance/Wayne_Enterprises"
-        )
+        def make_obj(id: int) -> dict:
+            return {"id": id, "name": f"dummy_{id + 1000}"}
 
-    def test_should_handle_character(self):
+        MAX = 5
+        id = 0
+        entities_1 = []
+        for _ in range(MAX):
+            entities_1.append(make_obj(id))
+            id += 1
+
+        entities_2 = [make_obj(id)]
+
+        pook.post(
+            make_esi_url("universe/ids"),
+            reply=200,
+            json=[obj["name"] for obj in entities_1],
+            response_json={
+                "agents": [],
+                "alliances": [],
+                "characters": entities_1,
+                "constellations": [],
+                "corporations": [],
+                "factions": [],
+                "inventory_types": [],
+                "regions": [],
+                "stations": [],
+                "systems": [],
+            },
+        )
+        pook.post(
+            make_esi_url("universe/ids"),
+            reply=200,
+            json=[obj["name"] for obj in entities_2],
+            response_json={
+                "agents": [],
+                "alliances": [],
+                "characters": entities_2,
+                "constellations": [],
+                "corporations": [],
+                "factions": [],
+                "inventory_types": [],
+                "regions": [],
+                "stations": [],
+                "systems": [],
+            },
+        )
+        names = [n["name"] for n in entities_1] + [n["name"] for n in entities_2]
+
+        # when
+        with patch(MODULE_PATH + "._ESI_MAX_NAMES_PER_REQUEST", MAX):
+            got: QuerySet[EveEntity] = EveEntity.objects.fetch_by_names_esi(names)
+
+        # then
+        ids = [n["id"] for n in entities_1] + [n["id"] for n in entities_2]
+        self.assertSetEqual(queryset_pks(got), set(ids))
+        self.assertTrue(pook.isdone())
+
+    @pook.on
+    def test_should_fetch_unknown_entities_from_esi_only(self):
         # given
-        obj = EveEntityFactory(
-            id=1001, name="Bruce Wayne", category=EveEntity.CATEGORY_CHARACTER
+        obj_1 = EveEntityFactory()
+        obj_1_name = "Alpha"
+        obj_2_id = 1001
+        obj_2_name = "Bravo"
+        pook.post(
+            make_esi_url("universe/ids"),
+            reply=200,
+            json=[obj_2_name],
+            response_json={
+                "agents": [],
+                "alliances": [],
+                "characters": [
+                    {"id": obj_2_id, "name": obj_2_name},
+                ],
+                "constellations": [],
+                "corporations": [],
+                "factions": [],
+                "inventory_types": [],
+                "regions": [],
+                "stations": [],
+                "systems": [],
+            },
         )
-        # when/then
-        self.assertEqual(obj.profile_url, "https://evewho.com/character/1001")
 
-    def test_should_handle_corporation(self):
+        # when
+        got: QuerySet[EveEntity] = EveEntity.objects.fetch_by_names_esi(
+            [obj_1.name, obj_2_name]
+        )
+
+        # then
+        self.assertSetEqual(queryset_pks(got), {obj_2_id, obj_1.id})
+        obj_2 = EveEntity.objects.get(id=obj_2_id)
+        self.assertEqual(obj_2.name, obj_2_name)
+        obj_1.refresh_from_db()
+        self.assertNotEqual(obj_1.name, obj_1_name)
+
+    @pook.on
+    def test_should_fetch_all_names_when_requested(self):
         # given
-        obj = EveEntityFactory(
-            id=2001, name="Wayne Technologies", category=EveEntity.CATEGORY_CORPORATION
-        )
-        # when/then
-        self.assertEqual(
-            obj.profile_url, "https://evemaps.dotlan.net/corp/Wayne_Technologies"
-        )
-
-    def test_should_handle_faction(self):
-        # given
-        obj = EveEntityFactory(
-            id=99, name="Amarr Empire", category=EveEntity.CATEGORY_FACTION
-        )
-        # when/then
-        self.assertEqual(
-            obj.profile_url, "https://evemaps.dotlan.net/factionwarfare/Amarr_Empire"
-        )
-
-    def test_should_handle_inventory_type(self):
-        # given
-        obj = EveEntityFactory(
-            id=603, name="Merlin", category=EveEntity.CATEGORY_INVENTORY_TYPE
-        )
-        # when/then
-        self.assertEqual(
-            obj.profile_url, "https://www.kalkoken.org/apps/eveitems/?typeId=603"
+        obj_1 = EveEntityFactory()
+        obj_1_name = "Alpha"
+        obj_2_id = 1001
+        obj_2_name = "Bravo"
+        pook.post(
+            make_esi_url("universe/ids"),
+            reply=200,
+            response_json={
+                "agents": [],
+                "alliances": [],
+                "characters": [
+                    {"id": obj_1.id, "name": obj_1_name},
+                    {"id": obj_2_id, "name": obj_2_name},
+                ],
+                "constellations": [],
+                "corporations": [],
+                "factions": [],
+                "inventory_types": [],
+                "regions": [],
+                "stations": [],
+                "systems": [],
+            },
         )
 
-    def test_should_handle_solar_system(self):
-        # given
-        obj = EveEntityFactory(
-            id=30004984, name="Abune", category=EveEntity.CATEGORY_SOLAR_SYSTEM
-        )
-        # when/then
-        self.assertEqual(obj.profile_url, "https://evemaps.dotlan.net/system/Abune")
-
-    def test_should_handle_station(self):
-        # given
-        obj = EveEntityFactory(
-            id=60003760,
-            name="Jita IV - Moon 4 - Caldari Navy Assembly Plant",
-            category=EveEntity.CATEGORY_STATION,
-        )
-        # when/then
-        self.assertEqual(
-            obj.profile_url,
-            "https://evemaps.dotlan.net/station/Jita_IV_-_Moon_4_-_Caldari_Navy_Assembly_Plant",
+        # when
+        got: QuerySet[EveEntity] = EveEntity.objects.fetch_by_names_esi(
+            [obj_1.name, obj_2_name], update=True
         )
 
-    def test_should_return_empty_string_for_undefined_category(self):
-        # given
-        obj = EveEntityFactory(
-            id=99, name="Wayne Technologies", category=EveEntity.CATEGORY_CONSTELLATION
-        )
-        self.assertEqual(obj.profile_url, "")
+        # then
+        self.assertSetEqual(queryset_pks(got), {obj_2_id})  # obj_1 name has changed!!
+        obj_2 = EveEntity.objects.get(id=obj_2_id)
+        self.assertEqual(obj_2.name, obj_2_name)
+        obj_1.refresh_from_db()
+        self.assertEqual(obj_1.name, obj_1_name)
 
 
-class TestEveEntity_BulkResolveIDs(TestCase):
+class TestEveEntityManager_BulkResolveIDs(TestCase):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
@@ -800,7 +789,7 @@ class TestEveEntity_BulkResolveIDs(TestCase):
         self.assertEqual(obj.category, category_2)
 
 
-class TestEveEntityUpdateFromESIByID(TestCase):
+class TestEveEntityManager_UpdateFromESIByID(TestCase):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
@@ -851,4 +840,102 @@ class TestEveEntityUpdateFromESIByID(TestCase):
         self.assertEqual(result, 0)
 
 
+class TestEveEntityQuerySet(TestCase):
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cache.clear()
+
+    @pook.on
+    def test_can_update_entities_from_esi(self):
+        # given
+        character = EveEntityCharacterFactory()
+        corporation = EveEntityCorporationFactory()
+        pook.post(
+            make_esi_url("universe/names"),
+            reply=200,
+            response_json=[
+                {"category": "character", "id": character.id, "name": "Alpha"},
+                {"category": "corporation", "id": corporation.id, "name": "Bravo"},
+            ],
+        )
+
+        # when
+        got = EveEntity.objects.all().update_from_esi()
+
+        # then
+        self.assertEqual(got, 2)
+        character.refresh_from_db()
+        self.assertEqual(character.name, "Alpha")
+        self.assertEqual(character.category, EveEntity.CATEGORY_CHARACTER)
+        corporation.refresh_from_db()
+        self.assertEqual(corporation.name, "Bravo")
+        self.assertEqual(corporation.category, EveEntity.CATEGORY_CORPORATION)
+
+    @pook.on
+    def test_can_divide_and_conquer(self):
+        # given
+        character = EveEntityCharacterFactory()
+        invalid = EveEntityFactory(id=666, name="", category="")
+        pook.post(
+            make_esi_url("universe/names"),
+            reply=404,
+            json=[character.id, invalid.id],
+            response_json={"error": "invalid"},
+        )
+        pook.post(
+            make_esi_url("universe/names"),
+            reply=404,
+            json=[invalid.id, character.id],
+            response_json={"error": "invalid"},
+        )
+        pook.post(
+            make_esi_url("universe/names"),
+            reply=404,
+            json=[invalid.id],
+            response_json={"error": "invalid"},
+        )
+        pook.post(
+            make_esi_url("universe/names"),
+            reply=200,
+            json=[character.id],
+            response_json=[
+                {"category": "character", "id": character.id, "name": "Alpha"},
+            ],
+        )
+
+        # when
+        got = EveEntity.objects.all().update_from_esi()
+
+        # then
+        self.assertEqual(got, 1)
+        character.refresh_from_db()
+        self.assertEqual(character.name, "Alpha")
+        self.assertEqual(character.category, EveEntity.CATEGORY_CHARACTER)
+
+    @pook.on
+    def test_can_ignore_invalid_ids(self):
+        # given
+        character = EveEntityCharacterFactory()
+        EveEntityFactory(id=1, name="", category="")
+        pook.post(
+            make_esi_url("universe/names"),
+            reply=200,
+            response_json=[
+                {"category": "character", "id": character.id, "name": "Alpha"},
+            ],
+        )
+
+        # when
+        got = EveEntity.objects.all().update_from_esi()
+
+        # then
+        self.assertEqual(got, 1)
+        character.refresh_from_db()
+        self.assertEqual(character.name, "Alpha")
+        self.assertEqual(character.category, EveEntity.CATEGORY_CHARACTER)
+
+
+# -----
+# -----
 # -----

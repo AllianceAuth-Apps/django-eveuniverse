@@ -27,6 +27,7 @@ if TYPE_CHECKING:
 logger = LoggerAddTag(logging.getLogger(__name__), __title__)
 
 _ESI_INVALID_IDS = [1]  # Will never try to resolve these invalid IDs from ESI
+_ESI_MAX_NAMES_PER_REQUEST = 500
 
 
 class EveEntityQuerySet(models.QuerySet):
@@ -153,16 +154,19 @@ class EveEntityManagerBase(EveUniverseEntityModelManager):
                 self.filter(name__in=names).values_list("name", flat=True)
             )
             names_to_fetch = names - existing_names
+
         if names_to_fetch:
             esi_result = self._fetch_names_from_esi(names_to_fetch)
             if esi_result:
                 self._update_or_create_entities(esi_result)
+
         return self.filter(name__in=names)
 
     def _fetch_names_from_esi(self, names: Iterable[str]) -> dict:
         logger.info("Trying to fetch EveEntities from ESI by name")
         result = defaultdict(list)
-        for chunk_names in chunks(list(names), 500):
+        names_2 = sorted(names)
+        for chunk_names in chunks(names_2, _ESI_MAX_NAMES_PER_REQUEST):
             result_chunk = esi.client.Universe.post_universe_ids(
                 names=chunk_names
             ).results()
@@ -312,7 +316,7 @@ class EveEntityManagerBase(EveUniverseEntityModelManager):
         """Updates all Eve entity objects by id from ESI."""
         if not ids:
             return 0
-        ids = list(set((int(id) for id in ids if id not in _ESI_INVALID_IDS)))
+        ids = sorted(set((int(id) for id in ids if id not in _ESI_INVALID_IDS)))
         logger.info("Updating %d entities from ESI", len(ids))
         resolved_counter = 0
         for chunk_ids in chunks(ids, POST_UNIVERSE_NAMES_MAX_ITEMS):
