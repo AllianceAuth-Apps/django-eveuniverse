@@ -26,8 +26,9 @@ This release is a major update with several breaking changes.
 - Removed outdated command `eveuniverse_fix_section_flags`
 - Pinned swagger spec file
 - Modernized HTTP related
-- Added support for Django 5.2
+- Added support for Django 5.2 & 6.0
 - Added support for django-esi 9
+- Added support fpr Python 3.13
 
 ### Fixed
 
