@@ -1,8 +1,6 @@
 from unittest.mock import patch
 
 import pook
-from django.core.cache import cache
-from django.test import TestCase
 
 from eveuniverse.models import (
     EveAsteroidBelt,
@@ -17,6 +15,7 @@ from eveuniverse.models import (
     EveStargate,
     EveStation,
 )
+from eveuniverse.tests.helpers import TestCaseWithClearCache
 from eveuniverse.tests.testdata.factories_2 import (
     EveMoonFactory,
     EvePlanetFactory,
@@ -31,11 +30,7 @@ from eveuniverse.tests.testdata.factories_2 import (
 MODELS_PATH = "eveuniverse.models.base"
 
 
-class TestEveAsteroidBelt(TestCase):
-    @classmethod
-    def setUpClass(cls):
-        super().setUpClass()
-        cache.clear()
+class TestEveAsteroidBelt(TestCaseWithClearCache):
 
     @pook.on
     def test_create_from_esi(self):
@@ -85,11 +80,7 @@ class TestEveAsteroidBelt(TestCase):
         self.assertEqual(obj.eve_planet, planet)
 
 
-class TestEveConstellation(TestCase):
-    @classmethod
-    def setUpClass(cls):
-        super().setUpClass()
-        cache.clear()
+class TestEveConstellation(TestCaseWithClearCache):
 
     @pook.on
     def test_create_from_esi(self):
@@ -142,11 +133,7 @@ class TestEveConstellation(TestCase):
         self.assertEqual(obj.eve_entity_category(), EveEntity.CATEGORY_CONSTELLATION)
 
 
-class TestEveMoon(TestCase):
-    @classmethod
-    def setUpClass(cls):
-        super().setUpClass()
-        cache.clear()
+class TestEveMoon(TestCaseWithClearCache):
 
     @pook.on
     def test_create_from_esi(self):
@@ -197,11 +184,7 @@ class TestEveMoon(TestCase):
         self.assertEqual(obj.eve_planet, planet)
 
 
-class TestEvePlanet(TestCase):
-    @classmethod
-    def setUpClass(cls):
-        super().setUpClass()
-        cache.clear()
+class TestEvePlanet(TestCaseWithClearCache):
 
     @patch(MODELS_PATH + ".EVEUNIVERSE_LOAD_ASTEROID_BELTS", False)
     @patch(MODELS_PATH + ".EVEUNIVERSE_LOAD_MOONS", False)
@@ -535,11 +518,7 @@ class TestEvePlanet(TestCase):
         self.assertEqual(obj.type_name(), "Barren")
 
 
-class TestEveRace(TestCase):
-    @classmethod
-    def setUpClass(cls):
-        super().setUpClass()
-        cache.clear()
+class TestEveRace(TestCaseWithClearCache):
 
     @pook.on
     def test_create_from_esi(self):
@@ -610,11 +589,7 @@ class TestEveRace(TestCase):
         self.assertTrue(EveRace.objects.filter(id=race_2_id).exists())
 
 
-class TestEveRegion(TestCase):
-    @classmethod
-    def setUpClass(cls):
-        super().setUpClass()
-        cache.clear()
+class TestEveRegion(TestCaseWithClearCache):
 
     @pook.on
     def test_create_from_esi(self):
@@ -684,11 +659,7 @@ class TestEveRegion(TestCase):
 
 @patch(MODELS_PATH + ".EVEUNIVERSE_LOAD_DOGMAS", False)
 @patch(MODELS_PATH + ".EVEUNIVERSE_LOAD_MARKET_GROUPS", False)
-class TestEveStar(TestCase):
-    @classmethod
-    def setUpClass(cls):
-        super().setUpClass()
-        cache.clear()
+class TestEveStar(TestCaseWithClearCache):
 
     @pook.on
     def test_create_from_esi(self):
@@ -733,11 +704,7 @@ class TestEveStar(TestCase):
         self.assertEqual(obj.temperature, temperature)
 
 
-class TestEveStargate(TestCase):
-    @classmethod
-    def setUpClass(cls):
-        super().setUpClass()
-        cache.clear()
+class TestEveStargate(TestCaseWithClearCache):
 
     @pook.on
     def test_should_create_stargate_from_esi(self):
@@ -823,11 +790,7 @@ class TestEveStargate(TestCase):
         self.assertEqual(obj.eve_entity_category(), "")
 
 
-class TestEveStation(TestCase):
-    @classmethod
-    def setUpClass(cls):
-        super().setUpClass()
-        cache.clear()
+class TestEveStation(TestCaseWithClearCache):
 
     @pook.on
     def test_create_from_esi(self):

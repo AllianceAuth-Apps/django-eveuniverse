@@ -3,7 +3,6 @@ from typing import NamedTuple
 from unittest.mock import Mock, patch
 
 import pook
-from django.core.cache import cache
 from django.test import TestCase
 from django.test.utils import override_settings
 from django.utils.timezone import now
@@ -23,6 +22,7 @@ from eveuniverse.models import (
     EveTypeDogmaEffect,
     EveUnit,
 )
+from eveuniverse.tests.helpers import TestCaseWithClearCache
 from eveuniverse.tests.testdata.factories_2 import (
     BlueprintTypeFactory,
     EveCategoryFactory,
@@ -40,11 +40,7 @@ from eveuniverse.tests.testdata.factories_2 import (
 MODELS_PATH = "eveuniverse.models"
 
 
-class TestEveCategory(TestCase):
-    @classmethod
-    def setUpClass(cls):
-        super().setUpClass()
-        cache.clear()
+class TestEveCategory(TestCaseWithClearCache):
 
     @pook.on
     def test_should_create_object_from_esi(self):
@@ -74,11 +70,7 @@ class TestEveCategory(TestCase):
 
 
 @patch(MODELS_PATH + ".base.EVEUNIVERSE_LOAD_DOGMAS", True)
-class TestEveDogmaAttribute(TestCase):
-    @classmethod
-    def setUpClass(cls):
-        super().setUpClass()
-        cache.clear()
+class TestEveDogmaAttribute(TestCaseWithClearCache):
 
     @pook.on
     def test_can_create_from_esi(self):
@@ -116,11 +108,7 @@ class TestEveDogmaAttribute(TestCase):
 
 
 @patch(MODELS_PATH + ".base.EVEUNIVERSE_LOAD_DOGMAS", True)
-class TestEveDogmaEffect(TestCase):
-    @classmethod
-    def setUpClass(cls):
-        super().setUpClass()
-        cache.clear()
+class TestEveDogmaEffect(TestCaseWithClearCache):
 
     @pook.on
     def test_can_create_from_esi(self):
@@ -203,11 +191,7 @@ class TestEveDogmaEffect(TestCase):
         self.assertEqual(modifiers.operator, 6)
 
 
-class TestEveGraphic(TestCase):
-    @classmethod
-    def setUpClass(cls):
-        super().setUpClass()
-        cache.clear()
+class TestEveGraphic(TestCaseWithClearCache):
 
     @pook.on
     def test_create_from_esi(self):
@@ -238,11 +222,7 @@ class TestEveGraphic(TestCase):
         self.assertEqual(obj.sof_race_name, "caldari")
 
 
-class TestEveGroup(TestCase):
-    @classmethod
-    def setUpClass(cls):
-        super().setUpClass()
-        cache.clear()
+class TestEveGroup(TestCaseWithClearCache):
 
     @pook.on
     def test_can_create_from_esi(self):
@@ -274,11 +254,7 @@ class TestEveGroup(TestCase):
         self.assertTrue(obj.published)
 
 
-class TestEveMarketGroup(TestCase):
-    @classmethod
-    def setUpClass(cls):
-        super().setUpClass()
-        cache.clear()
+class TestEveMarketGroup(TestCaseWithClearCache):
 
     @pook.on
     def test_can_fetch_group(self):
@@ -308,11 +284,7 @@ class TestEveMarketGroup(TestCase):
         self.assertEqual(obj.description, description)
 
 
-class TestEveMarketPriceManager(TestCase):
-    @classmethod
-    def setUpClass(cls):
-        super().setUpClass()
-        cache.clear()
+class TestEveMarketPriceManager(TestCaseWithClearCache):
 
     @pook.on
     def test_add_new_prices_from_esi_but_for_existing_types_only(self):
@@ -452,11 +424,7 @@ class TestEveType_Basics(TestCase):
         )
 
 
-class TestEveType_ESI(TestCase):
-    @classmethod
-    def setUpClass(cls):
-        super().setUpClass()
-        cache.clear()
+class TestEveType_ESI(TestCaseWithClearCache):
 
     @patch(MODELS_PATH + ".base.EVEUNIVERSE_LOAD_GRAPHICS", False)
     @patch(MODELS_PATH + ".base.EVEUNIVERSE_LOAD_DOGMAS", False)

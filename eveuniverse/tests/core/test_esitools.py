@@ -1,17 +1,11 @@
 import pook
-from django.core.cache import cache
-from django.test import TestCase
 
 from eveuniverse.core import esitools
+from eveuniverse.tests.helpers import TestCaseWithClearCache
 from eveuniverse.tests.testdata.factories_2 import make_esi_url
 
 
-class TestIsEsiOnline(TestCase):
-    @classmethod
-    def setUpClass(cls):
-        super().setUpClass()
-        cache.clear()
-
+class TestIsEsiOnline(TestCaseWithClearCache):
     @pook.on
     def test_is_online(self):
         # given

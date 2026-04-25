@@ -2,7 +2,6 @@ import datetime as dt
 from unittest.mock import patch
 
 import pook
-from django.core.cache import cache
 from django.test import TestCase
 from django.test.utils import override_settings
 from django.utils.timezone import now
@@ -15,6 +14,7 @@ from eveuniverse.models import (
     EveSolarSystem,
     EveType,
 )
+from eveuniverse.tests.helpers import TestCaseWithClearCache
 from eveuniverse.tests.testdata.factories_2 import (
     EveEntityFactory,
     EveEntityUnresolvedFactory,
@@ -28,12 +28,7 @@ TASKS_PATH = "eveuniverse.tasks"
 
 
 @override_settings(CELERY_ALWAYS_EAGER=True, CELERY_EAGER_PROPAGATES_EXCEPTIONS=True)
-class TestTasks(TestCase):
-    @classmethod
-    def setUpClass(cls):
-        super().setUpClass()
-        cache.clear()
-
+class TestTasks(TestCaseWithClearCache):
     @pook.on
     def test_should_load_eve_object_from_scratch(self):
         # given
@@ -168,12 +163,7 @@ class TestTasks(TestCase):
 
 
 @override_settings(CELERY_ALWAYS_EAGER=True, CELERY_EAGER_PROPAGATES_EXCEPTIONS=True)
-class TestLoadData(TestCase):
-    @classmethod
-    def setUpClass(cls):
-        super().setUpClass()
-        cache.clear()
-
+class TestLoadData(TestCaseWithClearCache):
     @pook.on
     def test_load_map(self):
         # given
@@ -522,12 +512,7 @@ class TestLoadData(TestCase):
 
 
 @override_settings(CELERY_ALWAYS_EAGER=True, CELERY_EAGER_PROPAGATES_EXCEPTIONS=True)
-class TestLoadAllTypes(TestCase):
-    @classmethod
-    def setUpClass(cls):
-        super().setUpClass()
-        cache.clear()
-
+class TestLoadAllTypes(TestCaseWithClearCache):
     @pook.on
     def test_should_load_all_types(self):
         # given

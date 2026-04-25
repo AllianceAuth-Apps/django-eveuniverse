@@ -2,12 +2,12 @@ from io import StringIO
 from unittest.mock import patch
 
 import pook
-from django.core.cache import cache
 from django.core.management import call_command
 from django.test import TestCase
 from django.test.utils import override_settings
 
 from eveuniverse.models import EveType
+from eveuniverse.tests.helpers import TestCaseWithClearCache
 from eveuniverse.tests.testdata.factories_2 import (
     EveDogmaAttributeFactory,
     EveDogmaEffectFactory,
@@ -133,12 +133,7 @@ class TestLoadDataCommand(TestCase):
 
 @override_settings(CELERY_ALWAYS_EAGER=True, CELERY_EAGER_PROPAGATES_EXCEPTIONS=True)
 @patch(PACKAGE_PATH + ".eveuniverse_load_types.is_esi_online", lambda: True)
-class TestLoadTypes(TestCase):
-    @classmethod
-    def setUpClass(cls):
-        super().setUpClass()
-        cache.clear()
-
+class TestLoadTypes(TestCaseWithClearCache):
     @pook.on
     def test_load_one_type(self):
         # given
@@ -396,12 +391,7 @@ class TestLoadTypes(TestCase):
 
 
 @override_settings(CELERY_ALWAYS_EAGER=True, CELERY_EAGER_PROPAGATES_EXCEPTIONS=True)
-class TestLoadTypes_EsiCheck(TestCase):
-    @classmethod
-    def setUpClass(cls):
-        super().setUpClass()
-        cache.clear()
-
+class TestLoadTypes_EsiCheck(TestCaseWithClearCache):
     @patch(PACKAGE_PATH + ".eveuniverse_load_types.is_esi_online")
     @pook.on
     def test_checks_esi_by_default(self, mock_is_esi_online):
@@ -490,4 +480,6 @@ class TestLoadTypes_EsiCheck(TestCase):
         # then
         self.assertTrue(EveType.objects.filter(id=type_id).exists())
         self.assertFalse(mock_is_esi_online.called)
-        self.assertFalse(mock_is_esi_online.called)
+
+
+# --

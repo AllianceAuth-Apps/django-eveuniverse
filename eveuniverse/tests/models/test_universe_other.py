@@ -1,9 +1,8 @@
 import pook
-from django.core.cache import cache
-from django.test import TestCase
 from esi.exceptions import HTTPClientError
 
 from eveuniverse.models import EveAncestry, EveEntity, EveFaction
+from eveuniverse.tests.helpers import TestCaseWithClearCache
 from eveuniverse.tests.testdata.factories_2 import (
     EveBloodlineFactory,
     EveSolarSystemFactory,
@@ -11,12 +10,7 @@ from eveuniverse.tests.testdata.factories_2 import (
 )
 
 
-class TestEveAncestry(TestCase):
-    @classmethod
-    def setUpClass(cls):
-        super().setUpClass()
-        cache.clear()
-
+class TestEveAncestry(TestCaseWithClearCache):
     @pook.on
     def test_create_from_esi(self):
         # given
@@ -82,12 +76,7 @@ class TestEveAncestry(TestCase):
             self.assertEqual(ex.exception.status_code, 404)
 
 
-class TestEveFaction(TestCase):
-    @classmethod
-    def setUpClass(cls):
-        super().setUpClass()
-        cache.clear()
-
+class TestEveFaction(TestCaseWithClearCache):
     @pook.on
     def test_can_create_from_esi(self):
         # given

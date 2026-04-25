@@ -2,12 +2,12 @@ from typing import NamedTuple
 from unittest.mock import patch
 
 import pook
-from django.core.cache import cache
 from django.test import TestCase
 
 from eveuniverse.core import evesdeapi
 from eveuniverse.helpers import meters_to_ly
 from eveuniverse.models import EveEntity, EvePlanet, EveSolarSystem, EveStar, EveType
+from eveuniverse.tests.helpers import TestCaseWithClearCache
 from eveuniverse.tests.testdata.factories_2 import (
     AsteroidBeltTypeFactory,
     EveAsteroidBeltFactory,
@@ -35,7 +35,7 @@ from eveuniverse.tests.testdata.factories_2 import (
 MODELS_PATH = "eveuniverse.models.base"
 
 
-class TestEveSolarSystem(TestCase):
+class TestEveSolarSystem(TestCaseWithClearCache):
     def test_str(self):
         obj = EveSolarSystemFactory()
         self.assertEqual(str(obj), obj.name)
@@ -46,10 +46,6 @@ class TestEveSolarSystem(TestCase):
 @patch(MODELS_PATH + ".EVEUNIVERSE_LOAD_STARS", False)
 @patch(MODELS_PATH + ".EVEUNIVERSE_LOAD_STATIONS", False)
 class TestEveSolarSystem_Sections(TestCase):
-    @classmethod
-    def setUpClass(cls):
-        super().setUpClass()
-        cache.clear()
 
     def test_str(self):
         obj = EveSolarSystemFactory()
@@ -390,11 +386,7 @@ class TestEveSolarSystem_Sections(TestCase):
 @patch(MODELS_PATH + ".EVEUNIVERSE_LOAD_STARS", False)
 @patch(MODELS_PATH + ".EVEUNIVERSE_LOAD_STATIONS", False)
 @patch(MODELS_PATH + ".EVEUNIVERSE_LOAD_TYPE_MATERIALS", False)
-class TestEveSolarSystem_NearestCelestial(TestCase):
-    @classmethod
-    def setUpClass(cls):
-        super().setUpClass()
-        cache.clear()
+class TestEveSolarSystem_NearestCelestial(TestCaseWithClearCache):
 
     @pook.on
     def test_should_return_celestial(self):
@@ -617,11 +609,7 @@ class TestEveSolarSystem_DistanceTo(TestCase):
         self.assertIsNone(result)
 
 
-class TestEveSolarSystem_JumpsTo(TestCase):
-    @classmethod
-    def setUpClass(cls):
-        super().setUpClass()
-        cache.clear()
+class TestEveSolarSystem_JumpsTo(TestCaseWithClearCache):
 
     @pook.on
     def test_can_calculate_jumps(self):
@@ -683,11 +671,7 @@ class TestEveSolarSystem_JumpsTo(TestCase):
         self.assertIsNone(b.jumps_to(a))
 
 
-class TestEveSolarSystem_RouteTo(TestCase):
-    @classmethod
-    def setUpClass(cls):
-        super().setUpClass()
-        cache.clear()
+class TestEveSolarSystem_RouteTo(TestCaseWithClearCache):
 
     @pook.on
     def test_should_return_valid_route(self):

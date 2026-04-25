@@ -16,6 +16,24 @@ This release is a major update with several breaking changes.
 - New minimum requirements: Python 3.10 & Django 4.2 & django-esi 8
 - Now requires django-redis for caching
 
+### Update notes
+
+django-eveuniverse was initially developed to support community apps for Alliance Auth.
+
+If you are using it for a non-Alliance Auth project please note that the OpenAPI client
+in django-esi now requires django-redis as cache backend for Django.
+
+It can be configured like this Django's settings file.
+
+```python
+CACHES = {
+    "default": {
+        "BACKEND": "django_redis.cache.RedisCache",
+        "LOCATION": "redis://127.0.0.1:6379/1",
+    }
+}
+```
+
 ### Changed
 
 - Breaking Change: Removed support for Django 3.2

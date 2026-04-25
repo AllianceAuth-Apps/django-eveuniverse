@@ -4,13 +4,13 @@ from typing import NamedTuple
 from unittest.mock import patch
 
 import pook
-from django.core.cache import cache
 from django.db.models import QuerySet
 from django.test import TestCase
+from esi.exceptions import HTTPClientError, HTTPServerError
 
 from eveuniverse.managers.entities import EveEntityNameResolver
 from eveuniverse.models import EveEntity
-from eveuniverse.tests.helpers import queryset_pks
+from eveuniverse.tests.helpers import TestCaseWithClearCache, queryset_pks
 from eveuniverse.tests.testdata.factories_2 import (
     EveEntityAllianceFactory,
     EveEntityCharacterFactory,
@@ -23,7 +23,7 @@ from eveuniverse.tests.testdata.factories_2 import (
 MODULE_PATH = "eveuniverse.managers.entities"
 
 
-class TestEveEntity_Model(TestCase):
+class TestEveEntity_Basics(TestCase):
     def test_repr(self):
         # given
         obj = EveEntity(
@@ -94,6 +94,29 @@ class TestEveEntity_IconURL(TestCase):
         obj = EveEntity(id=603, category=EveEntity.CATEGORY_INVENTORY_TYPE)
         expected = "https://images.evetech.net/types/603/icon?size=128"
         self.assertEqual(obj.icon_url(128), expected)
+
+
+class TestEveEntity_IsValidCategory(TestCase):
+    def test_all(self):
+        class Case(NamedTuple):
+            category: str
+            expected: bool
+
+        cases = [
+            Case(EveEntity.CATEGORY_ALLIANCE, True),
+            Case(EveEntity.CATEGORY_CHARACTER, True),
+            Case(EveEntity.CATEGORY_CONSTELLATION, True),
+            Case(EveEntity.CATEGORY_CORPORATION, True),
+            Case(EveEntity.CATEGORY_INVENTORY_TYPE, True),
+            Case(EveEntity.CATEGORY_REGION, True),
+            Case(EveEntity.CATEGORY_SOLAR_SYSTEM, True),
+            Case(EveEntity.CATEGORY_STATION, True),
+            Case("invalid", False),
+        ]
+
+        for case in cases:
+            with self.subTest(category=case.category):
+                self.assertIs(EveEntity.is_valid_category(case.category), case.expected)
 
 
 class TestEveEntity_ProfileUrl(TestCase):
@@ -224,12 +247,7 @@ class TestEveEntity_CategoryChecks(TestCase):
                     self.assertFalse(getattr(obj, prop_name))
 
 
-class TestEveEntityManager_ESI(TestCase):
-    @classmethod
-    def setUpClass(cls):
-        super().setUpClass()
-        cache.clear()
-
+class TestEveEntityManager_GetOrCreateEsi(TestCaseWithClearCache):
     @pook.on
     def test_can_create_new_from_esi_when_not_exists(self):
         # given
@@ -285,6 +303,19 @@ class TestEveEntityManager_ESI(TestCase):
         self.assertFalse(created)
 
     @pook.on
+    def test_should_raise_error_when_not_found_and_request_failed(self):
+        # given
+        pook.post(
+            make_esi_url("universe/names"),
+            reply=403,
+            response_json={"error": "some client error"},
+        )
+
+        # when/then
+        with self.assertRaises(HTTPClientError):
+            EveEntity.objects.get_or_create_esi(id=666)
+
+    @pook.on
     def test_should_update_from_esi_when_unresolved(self):
         # given
         obj = EveEntityUnresolvedFactory()
@@ -308,6 +339,41 @@ class TestEveEntityManager_ESI(TestCase):
         self.assertEqual(obj.name, name)
         self.assertEqual(obj.category, category)
 
+    @pook.on
+    def test_update_or_create_all_esi_raises_exception(self):
+        with self.assertRaises(NotImplementedError):
+            EveEntity.objects.update_or_create_all_esi()
+
+
+class TestEveEntityManager_UpdateFromEsi(TestCaseWithClearCache):
+    @pook.on
+    def test_can_update_existing_from_esi(self):
+        # given
+        obj_1 = EveEntityCharacterFactory()
+        name = "Alpha"
+        category = EveEntity.CATEGORY_CHARACTER
+        pook.post(
+            make_esi_url("universe/names"),
+            reply=200,
+            response_json=[
+                {
+                    "category": category,
+                    "id": obj_1.id,
+                    "name": name,
+                },
+            ],
+        )
+
+        # when
+        got = obj_1.update_from_esi()
+
+        # then
+        obj_1.refresh_from_db()
+        self.assertEqual(obj_1.name, name)
+        self.assertEqual(obj_1, got)
+
+
+class TestEveEntityManager_UpdateOrCreateEsi(TestCaseWithClearCache):
     @pook.on
     def test_can_update_existing_from_esi(self):
         # given
@@ -345,11 +411,8 @@ class TestEveEntityManager_ESI(TestCase):
         self.assertFalse(created)
         self.assertIsNone(obj)
 
-    @pook.on
-    def test_update_or_create_all_esi_raises_exception(self):
-        with self.assertRaises(NotImplementedError):
-            EveEntity.objects.update_or_create_all_esi()
 
+class TestEveEntityManager_BulkUpdate(TestCaseWithClearCache):
     @pook.on
     def test_can_bulk_update_new_from_esi(self):
         # given
@@ -410,6 +473,8 @@ class TestEveEntityManager_ESI(TestCase):
         obj_2.refresh_from_db()
         self.assertEqual(obj_2.name, name_2)
 
+
+class TestEveEntityManager_ResolveName(TestCaseWithClearCache):
     @pook.on
     def test_can_resolve_name_when_exists(self):
         # given
@@ -468,12 +533,7 @@ class TestEveEntityManager_ESI(TestCase):
         self.assertEqual(resolver.to_name(obj_2_id), "Bravo")
 
 
-class TestEveEntityManager_FetchByNamesEsi(TestCase):
-    @classmethod
-    def setUpClass(cls):
-        super().setUpClass()
-        cache.clear()
-
+class TestEveEntityManager_FetchByNamesEsi(TestCaseWithClearCache):
     @pook.on
     def test_can_entities_by_name_from_esi(self):
         # given
@@ -505,27 +565,6 @@ class TestEveEntityManager_FetchByNamesEsi(TestCase):
 
         # then
         self.assertSetEqual(queryset_pks(got), {character_id, alliance_id})
-
-    # FIXME: Reinstate
-    # @pook.on
-    # def test_should_make_multiple_esi_request_when_fetching_large_number_of_entities(
-    #     self,
-    # ):
-    #     # given
-    #     def my_endpoint(names):
-    #         characters = [
-    #             {"id": int(name.split("_")[1]), "name": name} for name in names
-    #         ]
-    #         data = {"characters": characters}
-    #         return BravadoOperationStub(data)
-
-    #     mock_esi.client.Universe.post_universe_ids.side_effect = my_endpoint
-    #     names = [f"dummy_{num + 1001}" for num in range(600)]
-    #     # when
-    #     result = EveEntity.objects.fetch_by_names_esi(names)
-    #     # then
-    #     self.assertEqual(mock_esi.client.Universe.post_universe_ids.call_count, 2)
-    #     self.assertEqual(len(result), 600)
 
     @pook.on
     def test_should_make_multiple_esi_request_when_fetching_many_entities(self):
@@ -666,12 +705,7 @@ class TestEveEntityManager_FetchByNamesEsi(TestCase):
         self.assertEqual(obj_1.name, obj_1_name)
 
 
-class TestEveEntityManager_BulkResolveIDs(TestCase):
-    @classmethod
-    def setUpClass(cls):
-        super().setUpClass()
-        cache.clear()
-
+class TestEveEntityManager_BulkResolveIDs(TestCaseWithClearCache):
     @pook.on
     def test_should_resolve_and_create_new_objs(self):
         # given
@@ -738,7 +772,20 @@ class TestEveEntityManager_BulkResolveIDs(TestCase):
         self.assertEqual(obj.category, category_2)
 
     @pook.on
-    def test_entities_without_name_will_be_refetched(self):
+    def test_should_raise_error_when_request_fails(self):
+        # given
+        pook.post(
+            make_esi_url("universe/names"),
+            reply=500,
+            response_json={"error": "some error"},
+        )
+
+        # when
+        with self.assertRaises(HTTPServerError):
+            EveEntity.objects.bulk_resolve_ids(ids=[42])
+
+    @pook.on
+    def test_should_refetch_entities_without_name(self):
         # given
         obj = EveEntityFactory(
             id=1001, category=EveEntity.CATEGORY_CORPORATION, name=""
@@ -790,12 +837,7 @@ class TestEveEntityManager_BulkResolveIDs(TestCase):
         self.assertEqual(obj.category, category_2)
 
 
-class TestEveEntityManager_UpdateFromESIByID(TestCase):
-    @classmethod
-    def setUpClass(cls):
-        super().setUpClass()
-        cache.clear()
-
+class TestEveEntityManager_UpdateFromESIByID(TestCaseWithClearCache):
     @pook.on
     def test_should_update_entity(self):
         # given
@@ -841,12 +883,7 @@ class TestEveEntityManager_UpdateFromESIByID(TestCase):
         self.assertEqual(result, 0)
 
 
-class TestEveEntityQuerySet(TestCase):
-    @classmethod
-    def setUpClass(cls):
-        super().setUpClass()
-        cache.clear()
-
+class TestEveEntityQuerySet(TestCaseWithClearCache):
     @pook.on
     def test_can_update_entities_from_esi(self):
         # given
@@ -937,6 +974,7 @@ class TestEveEntityQuerySet(TestCase):
         self.assertEqual(character.category, EveEntity.CATEGORY_CHARACTER)
 
 
+# -----
 # -----
 # -----
 # -----

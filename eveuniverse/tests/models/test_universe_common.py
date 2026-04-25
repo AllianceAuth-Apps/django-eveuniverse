@@ -1,7 +1,6 @@
 from unittest.mock import patch
 
 import pook
-from django.core.cache import cache
 from django.test import TestCase
 from django.test.utils import override_settings
 from esi.exceptions import HTTPServerError
@@ -18,6 +17,7 @@ from eveuniverse.models import (
     EveTypeDogmaEffect,
 )
 from eveuniverse.models.base import _EsiFieldMapping, determine_effective_sections
+from eveuniverse.tests.helpers import TestCaseWithClearCache
 from eveuniverse.tests.testdata.factories_2 import (
     EveCategoryFactory,
     EveDogmaAttributeFactory,
@@ -28,16 +28,7 @@ from eveuniverse.tests.testdata.factories_2 import (
 MODELS_PATH = "eveuniverse.models.base"
 
 
-@patch(MODELS_PATH + ".EVEUNIVERSE_LOAD_DOGMAS", True)
-class TestCommonFeatures(TestCase):
-    """These tests also cover the manager functionality shared among
-    all entity models. (1/2)
-    """
-
-    @classmethod
-    def setUpClass(cls):
-        super().setUpClass()
-        cache.clear()
+class TestGetOrCreateEsi(TestCaseWithClearCache):
 
     @pook.on
     def test_should_load_object_from_esi_when_not_exists(self):
@@ -78,30 +69,6 @@ class TestCommonFeatures(TestCase):
         self.assertFalse(created)
         self.assertEqual(o2.id, o1.id)
         self.assertEqual(o2.name, o1.name)
-        self.assertTrue(o2.published)
-
-    @pook.on
-    def test_should_update_from_esi_when_it_exists(self):
-        # given
-        o1 = EveCategoryFactory(name="Replace me", published=False)
-        pook.get(
-            make_esi_url(f"universe/categories/{o1.id}"),
-            reply=200,
-            response_json={
-                "category_id": o1.id,
-                "groups": [25, 26],
-                "name": "Alpha",
-                "published": True,
-            },
-        )
-
-        # when
-        o2: EveCategory
-        o2, created = EveCategory.objects.update_or_create_esi(id=o1.id)
-
-        # then
-        self.assertFalse(created)
-        self.assertEqual(o2.name, "Alpha")
         self.assertTrue(o2.published)
 
     @pook.on
@@ -168,7 +135,7 @@ class TestCommonFeatures(TestCase):
     @patch(MODELS_PATH + ".EVEUNIVERSE_LOAD_DOGMAS", False)
     @patch(MODELS_PATH + ".EVEUNIVERSE_LOAD_MARKET_GROUPS", False)
     @pook.on
-    def test_can_create_types_of_category_from_esi_including_dogmas_when_disabled(self):
+    def test_can_enable_sections_on_demand(self):
         # given
         category_id = 6
         da = EveDogmaAttributeFactory()
@@ -223,7 +190,7 @@ class TestCommonFeatures(TestCase):
         )
 
         # when
-        EveCategory.objects.update_or_create_esi(
+        EveCategory.objects.get_or_create_esi(
             id=category_id,
             include_children=True,
             wait_for_children=True,
@@ -238,20 +205,37 @@ class TestCommonFeatures(TestCase):
         self.assertTrue(et.dogma_effects.filter(eve_dogma_effect_id=de.id).exists())
 
 
+class TestUpdateOrCreateEsi(TestCaseWithClearCache):
+    @pook.on
+    def test_should_update_from_esi_when_it_exists(self):
+        # given
+        o1 = EveCategoryFactory(name="Replace me", published=False)
+        pook.get(
+            make_esi_url(f"universe/categories/{o1.id}"),
+            reply=200,
+            response_json={
+                "category_id": o1.id,
+                "groups": [25, 26],
+                "name": "Alpha",
+                "published": True,
+            },
+        )
+
+        # when
+        o2: EveCategory
+        o2, created = EveCategory.objects.update_or_create_esi(id=o1.id)
+
+        # then
+        self.assertFalse(created)
+        self.assertEqual(o2.name, "Alpha")
+        self.assertTrue(o2.published)
+
+
 @override_settings(CELERY_ALWAYS_EAGER=True, CELERY_EAGER_PROPAGATES_EXCEPTIONS=True)
 @patch(MODELS_PATH + ".EVEUNIVERSE_LOAD_GRAPHICS", False)
 @patch(MODELS_PATH + ".EVEUNIVERSE_LOAD_DOGMAS", False)
 @patch(MODELS_PATH + ".EVEUNIVERSE_LOAD_MARKET_GROUPS", False)
-class TestUpdateOrCreateAllESI(TestCase):
-    """These tests also cover the manager functionality shared among
-    all entity models. (2/2)
-    """
-
-    @classmethod
-    def setUpClass(cls):
-        super().setUpClass()
-        cache.clear()
-
+class TestUpdateOrCreateAllESI(TestCaseWithClearCache):
     @pook.on
     def test_should_update_without_children_and_sync(self):
         # given
@@ -460,12 +444,7 @@ class TestUpdateOrCreateAllESI(TestCase):
             )
 
 
-class TestBulkGetOrCreateEsi(TestCase):
-    @classmethod
-    def setUpClass(cls):
-        super().setUpClass()
-        cache.clear()
-
+class TestBulkGetOrCreateEsi(TestCaseWithClearCache):
     @pook.on
     def test_can_load_all_from_esi(self):
         # given

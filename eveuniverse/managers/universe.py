@@ -333,12 +333,12 @@ class EvePlanetManager(EveUniverseEntityModelManager):
             return esi_data
 
         if "system_id" not in esi_data:
-            raise ValueError("system_id not found in moon response - data error")
+            raise ValueError(f"system_id not found in moon response: {id}")
 
         system_id = esi_data["system_id"]
         solar_system_data = EveSolarSystem.objects._fetch_from_esi(id=system_id)  # type: ignore
         if "planets" not in solar_system_data:
-            raise ValueError("planets not found in solar system response - data error")
+            raise ValueError(f"planets not found in solar system response: {system_id}")
 
         for planet in solar_system_data["planets"]:
             if planet["planet_id"] == id:
