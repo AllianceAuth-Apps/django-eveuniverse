@@ -23,7 +23,18 @@ from eveuniverse.tests.testdata.factories_2 import (
 MODULE_PATH = "eveuniverse.managers.entities"
 
 
-class TestEveEntity_Basics(TestCase):
+class TestEveEntity_str(TestCase):
+    def test_should_return_name_when_exists(self):
+        obj = EveEntityCharacterFactory()
+        self.assertEqual(str(obj), obj.name)
+
+    def test_should_return_is_when_name_not_exists(self):
+        obj = EveEntityCharacterFactory()
+        obj.name = ""
+        self.assertIn(str(obj.id), str(obj))
+
+
+class TestEveEntity_repr(TestCase):
     def test_repr(self):
         # given
         obj = EveEntity(
@@ -120,81 +131,90 @@ class TestEveEntity_IsValidCategory(TestCase):
 
 
 class TestEveEntity_ProfileUrl(TestCase):
-    def test_should_handle_alliance(self):
-        # given
-        obj = EveEntityFactory(
-            id=3001, name="Wayne Enterprises", category=EveEntity.CATEGORY_ALLIANCE
-        )
-        # when/then
-        self.assertEqual(
-            obj.profile_url, "https://evemaps.dotlan.net/alliance/Wayne_Enterprises"
-        )
+    def test_should_return_correct_profile_url_for_each_category(self):
+        class Case(NamedTuple):
+            name: str
+            id: int
+            label: str
+            category: str
+            expected: str
 
-    def test_should_handle_character(self):
-        # given
-        obj = EveEntityFactory(
-            id=1001, name="Bruce Wayne", category=EveEntity.CATEGORY_CHARACTER
-        )
-        # when/then
-        self.assertEqual(obj.profile_url, "https://evewho.com/character/1001")
+        test_cases = [
+            Case(
+                name="alliance",
+                id=3001,
+                label="Wayne Enterprises",
+                category=EveEntity.CATEGORY_ALLIANCE,
+                expected="https://evemaps.dotlan.net/alliance/Wayne_Enterprises",
+            ),
+            Case(
+                name="character",
+                id=1001,
+                label="Bruce Wayne",
+                category=EveEntity.CATEGORY_CHARACTER,
+                expected="https://evewho.com/character/1001",
+            ),
+            Case(
+                name="corporation",
+                id=2001,
+                label="Wayne Technologies",
+                category=EveEntity.CATEGORY_CORPORATION,
+                expected="https://evemaps.dotlan.net/corp/Wayne_Technologies",
+            ),
+            Case(
+                name="faction",
+                id=99,
+                label="Amarr Empire",
+                category=EveEntity.CATEGORY_FACTION,
+                expected="https://evemaps.dotlan.net/factionwarfare/Amarr_Empire",
+            ),
+            Case(
+                name="inventory_type",
+                id=603,
+                label="Merlin",
+                category=EveEntity.CATEGORY_INVENTORY_TYPE,
+                expected="https://www.kalkoken.org/apps/eveitems/?typeId=603",
+            ),
+            Case(
+                name="solar_system",
+                id=30004984,
+                label="Abune",
+                category=EveEntity.CATEGORY_SOLAR_SYSTEM,
+                expected="https://evemaps.dotlan.net/system/Abune",
+            ),
+            Case(
+                name="region",
+                id=10000064,
+                label="Essence",
+                category=EveEntity.CATEGORY_REGION,
+                expected="https://evemaps.dotlan.net/region/Essence",
+            ),
+            Case(
+                name="station",
+                id=60003760,
+                label="Jita IV - Moon 4 - Caldari Navy Assembly Plant",
+                category=EveEntity.CATEGORY_STATION,
+                expected="https://evemaps.dotlan.net/station/Jita_IV_-_Moon_4_-_Caldari_Navy_Assembly_Plant",
+            ),
+            Case(
+                name="undefined_category",
+                id=666,
+                label="Wayne Technologies",
+                category="invalid",
+                expected="",
+            ),
+        ]
 
-    def test_should_handle_corporation(self):
-        # given
-        obj = EveEntityFactory(
-            id=2001, name="Wayne Technologies", category=EveEntity.CATEGORY_CORPORATION
-        )
-        # when/then
-        self.assertEqual(
-            obj.profile_url, "https://evemaps.dotlan.net/corp/Wayne_Technologies"
-        )
-
-    def test_should_handle_faction(self):
-        # given
-        obj = EveEntityFactory(
-            id=99, name="Amarr Empire", category=EveEntity.CATEGORY_FACTION
-        )
-        # when/then
-        self.assertEqual(
-            obj.profile_url, "https://evemaps.dotlan.net/factionwarfare/Amarr_Empire"
-        )
-
-    def test_should_handle_inventory_type(self):
-        # given
-        obj = EveEntityFactory(
-            id=603, name="Merlin", category=EveEntity.CATEGORY_INVENTORY_TYPE
-        )
-        # when/then
-        self.assertEqual(
-            obj.profile_url, "https://www.kalkoken.org/apps/eveitems/?typeId=603"
-        )
-
-    def test_should_handle_solar_system(self):
-        # given
-        obj = EveEntityFactory(
-            id=30004984, name="Abune", category=EveEntity.CATEGORY_SOLAR_SYSTEM
-        )
-        # when/then
-        self.assertEqual(obj.profile_url, "https://evemaps.dotlan.net/system/Abune")
-
-    def test_should_handle_station(self):
-        # given
-        obj = EveEntityFactory(
-            id=60003760,
-            name="Jita IV - Moon 4 - Caldari Navy Assembly Plant",
-            category=EveEntity.CATEGORY_STATION,
-        )
-        # when/then
-        self.assertEqual(
-            obj.profile_url,
-            "https://evemaps.dotlan.net/station/Jita_IV_-_Moon_4_-_Caldari_Navy_Assembly_Plant",
-        )
-
-    def test_should_return_empty_string_for_undefined_category(self):
-        # given
-        obj = EveEntityFactory(
-            id=99, name="Wayne Technologies", category=EveEntity.CATEGORY_CONSTELLATION
-        )
-        self.assertEqual(obj.profile_url, "")
+        for case in test_cases:
+            with self.subTest(category=case.name):
+                # given
+                obj = EveEntityFactory.build(
+                    id=case.id, name=case.label, category=case.category
+                )
+                # when/then
+                self.assertEqual(
+                    obj.profile_url, case.expected, f"Failed for category: {case.name}"
+                )
 
 
 class TestEveEntity_CategoryChecks(TestCase):
