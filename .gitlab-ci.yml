@@ -1,86 +1,65 @@
 stages:
-    - checks
-    - test
-    - deploy
+  - checks
+  - test
+  - deploy
 
 .tox_setup:
-    before_script:
-        - apt-get update
-        - apt-get install redis-server -y
-        - redis-server --daemonize yes
-        - python -V
-        - pip install tox
+  before_script:
+    - apt-get update
+    - apt-get install redis-server -y
+    - redis-server --daemonize yes
+    - python -V
+    - pip install tox
 
 pre-commit:
-    stage: checks
-    image: python:3.12-bookworm
-    variables:
-        PRE_COMMIT_HOME: ${CI_PROJECT_DIR}/.cache/pre-commit
-    cache:
-        paths:
-            - ${PRE_COMMIT_HOME}
-    script:
-        - pip install pre-commit
-        - pre-commit run --all-files
+  stage: checks
+  image: python:3.12-bookworm
+  variables:
+    PRE_COMMIT_HOME: ${CI_PROJECT_DIR}/.cache/pre-commit
+  cache:
+    paths:
+      - ${PRE_COMMIT_HOME}
+  script:
+    - pip install pre-commit
+    - pre-commit run --all-files
 
 pylint:
-    stage: checks
-    extends: .tox_setup
-    image: python:3.10-bookworm
-    script:
-        - tox -e pylint
+  stage: checks
+  extends: .tox_setup
+  image: python:3.10-bookworm
+  script:
+    - tox -e pylint
 
 test-py310:
-    extends: .tox_setup
-    image: python:3.10-bookworm
-    script:
-        - tox -e py310-$DJANGO_VERSION-$ESI_VERSION
-        - bash <(curl -s https://codecov.io/bash)
-    parallel:
-        matrix:
-            - DJANGO_VERSION: [django42, django52]
-              ESI_VERSION: [esi8, esi9]
-
-test-py311:
-    extends: .tox_setup
-    image: python:3.11-bookworm
-    script:
-        - tox -e py311-$DJANGO_VERSION-$ESI_VERSION
-        - bash <(curl -s https://codecov.io/bash)
-    parallel:
-        matrix:
-            - DJANGO_VERSION: [django42, django52]
-              ESI_VERSION: [esi8, esi9]
-
-test-py312:
-    extends: .tox_setup
-    image: python:3.12-bookworm
-    script:
-        - tox -e py312-$DJANGO_VERSION-$ESI_VERSION
-        - bash <(curl -s https://codecov.io/bash)
-    parallel:
-        matrix:
-            - DJANGO_VERSION: [django42, django52]
-              ESI_VERSION: [esi8, esi9]
+  extends: .tox_setup
+  image: python:3.$PYTHON_VERSION-bookworm
+  parallel:
+    matrix:
+      - PYTHON_VERSION: [10, 11, 12]
+        DJANGO_VERSION: [42, 52]
+        ESI_VERSION: [8]
+  script:
+    - tox -e py3$PYTHON_VERSION-django$DJANGO_VERSION-esi$ESI_VERSION
+    - bash <(curl -s https://codecov.io/bash)
 
 test-docs:
-    stage: test
-    image: python:3.12-bookworm
-    before_script:
-        - pip install tox
-    script:
-        - tox -e docs
+  stage: test
+  image: python:3.12-bookworm
+  before_script:
+    - pip install tox
+  script:
+    - tox -e docs
 
 deploy-pypi:
-    stage: deploy
-    image: python:3.12-bookworm
+  stage: deploy
+  image: python:3.12-bookworm
 
-    before_script:
-        - pip install build wheel twine
+  before_script:
+    - pip install build wheel twine
 
-    script:
-        - python -m build
-        - twine upload dist/*
+  script:
+    - python -m build
+    - twine upload dist/*
 
-    only:
-        - tags
+  only:
+    - tags

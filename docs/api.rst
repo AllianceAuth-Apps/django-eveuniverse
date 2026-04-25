@@ -99,11 +99,6 @@ eveitems
 .. automodule:: eveuniverse.core.eveitems
     :members:
 
-evemicros
-----------------
-.. automodule:: eveuniverse.core.evemicros
-    :members:
-
 evesdeapi
 ----------------
 .. automodule:: eveuniverse.core.evesdeapi
