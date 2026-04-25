@@ -421,7 +421,7 @@ class EveSolarSystem(EveUniverseEntityModel):
                 body={},
                 origin_system_id=origin_id,
                 destination_system_id=destination_id,
-            ).result()
+            ).result(use_etag=False)
             return response.route
         except HTTPClientError as ex:
             if ex.status_code == HTTPStatus.NOT_FOUND:

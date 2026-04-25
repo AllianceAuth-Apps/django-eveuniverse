@@ -173,7 +173,7 @@ def load_map(enabled_sections: Optional[List[str]] = None) -> None:
         "and the following additional entities if related to the map: %s",
         ", ".join(determine_effective_sections(enabled_sections)),
     )
-    region_ids = esi.client.Universe.GetUniverseRegions().result()
+    region_ids = esi.client.Universe.GetUniverseRegions().result(use_etag=False)
     for id in region_ids:
         update_or_create_eve_object.delay(
             model_name="EveRegion",
@@ -197,7 +197,7 @@ def load_all_types(enabled_sections: Optional[List[str]] = None) -> None:
         ", ".join(determine_effective_sections(enabled_sections)),
     )
     category, method = EveCategory._esi_path_list()
-    result = getattr(getattr(esi.client, category), method)().result()
+    result = getattr(getattr(esi.client, category), method)().result(use_etag=False)
     if not result:
         raise ValueError("Did not receive category IDs from ESI.")
     category_ids = sorted(result)

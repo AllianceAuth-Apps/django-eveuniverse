@@ -168,9 +168,9 @@ class EveEntityManagerBase(EveUniverseEntityModelManager):
         result = defaultdict(list)
         names_2 = sorted(names)
         for chunk_names in chunks(names_2, _ESI_MAX_NAMES_PER_REQUEST):
-            result_chunk = esi.client.Universe.PostUniverseIds(
-                body=chunk_names
-            ).result()
+            result_chunk = esi.client.Universe.PostUniverseIds(body=chunk_names).result(
+                use_etag=False
+            )
             for category, entities in result_chunk.model_dump().items():
                 if entities:
                     result[category] += entities
@@ -294,7 +294,9 @@ class EveEntityManagerBase(EveUniverseEntityModelManager):
             return None, False
 
         try:
-            result = esi.client.Universe.PostUniverseNames(body=[id]).result()
+            result = esi.client.Universe.PostUniverseNames(body=[id]).result(
+                use_etag=False
+            )
         except HTTPClientError as ex:
             if ex.status_code == HTTPStatus.NOT_FOUND:
                 logger.info("%s: ID is not valid", id)
@@ -333,7 +335,9 @@ class EveEntityManagerBase(EveUniverseEntityModelManager):
     def _resolve_entities_from_esi(self, ids: list, depth: int = 1):
         resolved_counter = 0
         try:
-            items = esi.client.Universe.PostUniverseNames(body=ids).result()
+            items = esi.client.Universe.PostUniverseNames(body=ids).result(
+                use_etag=False
+            )
         except HTTPClientError as ex:
             if ex.status_code == HTTPStatus.NOT_FOUND:
                 # if API fails to resolve all IDs, we divide and conquer,

@@ -180,7 +180,9 @@ class EveUniverseEntityModelManager(models.Manager):
         else:
             params = {}
         category, method = self.model._esi_path_object()
-        esi_data = getattr(getattr(esi.client, category), method)(**params).result()
+        esi_data = getattr(getattr(esi.client, category), method)(**params).result(
+            use_etag=False
+        )
         if isinstance(esi_data, list):
             return [x.model_dump() for x in esi_data]
         return esi_data.model_dump()
@@ -242,7 +244,9 @@ class EveUniverseEntityModelManager(models.Manager):
     ):
         if self.model._has_esi_path_list():
             category, method = self.model._esi_path_list()
-            ids = getattr(getattr(esi.client, category), method)().result()
+            ids = getattr(getattr(esi.client, category), method)().result(
+                use_etag=False
+            )
             for id in ids:
                 if wait_for_children:
                     self.update_or_create_esi(
@@ -527,7 +531,7 @@ class EveMarketPriceManager(models.Manager):
 
     def fetch_data_from_esi(self) -> List[object]:
         """Fetch market prices from ESI and return them."""
-        prices = esi.client.Market.GetMarketsPrices().result()
+        prices = esi.client.Market.GetMarketsPrices().result(use_etag=False)
         logger.info("Received %d market prices from ESI", len(prices))
         return prices
 
