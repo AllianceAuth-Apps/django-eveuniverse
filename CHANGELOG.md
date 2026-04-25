@@ -7,6 +7,51 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased] - yyyy-mm-dd
 
+## [2.0.0] - TBD
+
+This release is a major update with several breaking changes.
+
+- Switched to OpenAPI client from django-esi to replace deprecated Swagger client
+- No longer provides tools for generating test data
+- New minimum requirements: Python 3.10 & Django 4.2 & django-esi 8
+- Now requires django-redis for caching
+
+### Update notes
+
+django-eveuniverse was initially developed to support community apps for Alliance Auth.
+
+If you are using it for a non-Alliance Auth project please note that the OpenAPI client
+in django-esi now requires django-redis as cache backend for Django.
+
+It can be configured like this Django's settings file.
+
+```python
+CACHES = {
+    "default": {
+        "BACKEND": "django_redis.cache.RedisCache",
+        "LOCATION": "redis://127.0.0.1:6379/1",
+    }
+}
+```
+
+### Changed
+
+- Breaking Change: Removed support for Django 3.2
+- Breaking Change: Removed support for Python 3.8, 3.9
+- Breaking Change: Removed `EsiClientStub`, testdata feature -> Use test factories instead
+- Breaking Change: Removed evemicros package
+- Added test factories for all types
+- Removed outdated command `eveuniverse_fix_section_flags`
+- Pinned swagger spec file
+- Modernized HTTP related
+- Added support for Django 5.2 & 6.0
+- Added support for django-esi 9
+- Added support fpr Python 3.13
+
+### Fixed
+
+- Does not fetch moons for EveSolarSystem when section is enabled
+
 ## [1.6.1] - 2026-04-11
 
 ### Fixed

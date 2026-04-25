@@ -16,3 +16,4 @@ _build/
 _templates/
 temp/
 .env
+.temp/
