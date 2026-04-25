@@ -4,163 +4,32 @@ import pook
 from django.core.cache import cache
 from django.test import TestCase
 from django.test.utils import override_settings
-from esi.exceptions import HTTPClientError, HTTPServerError
+from esi.exceptions import HTTPServerError
 
 from eveuniverse.models import (
     EveAncestry,
-    EveAsteroidBelt,
+    EveBloodline,
     EveCategory,
     EveConstellation,
-    EveDogmaAttribute,
     EveDogmaEffect,
-    EveEntity,
-    EveFaction,
-    EveGraphic,
     EveGroup,
-    EveSolarSystem,
+    EveRegion,
     EveType,
+    EveTypeDogmaEffect,
 )
+from eveuniverse.models.base import _EsiFieldMapping, determine_effective_sections
 from eveuniverse.tests.testdata.factories_2 import (
-    EveBloodlineFactory,
     EveCategoryFactory,
     EveDogmaAttributeFactory,
     EveDogmaEffectFactory,
-    EvePlanetFactory,
-    EveSolarSystemFactory,
-    PositionFactory,
     make_esi_url,
 )
 
 MODELS_PATH = "eveuniverse.models.base"
 
 
-class TestEveAncestry(TestCase):
-    @classmethod
-    def setUpClass(cls):
-        super().setUpClass()
-        cache.clear()
-
-    @pook.on
-    def test_create_from_esi(self):
-        # given
-        bloodline_1 = EveBloodlineFactory()
-        bloodline_2 = EveBloodlineFactory()
-        pook.get(
-            make_esi_url("universe/ancestries"),
-            reply=200,
-            response_json=[
-                {
-                    "bloodline_id": bloodline_1.id,
-                    "description": "string",
-                    "icon_id": 11,
-                    "id": 1,
-                    "name": "Alpha",
-                    "short_description": "alpha-description",
-                },
-                {
-                    "bloodline_id": bloodline_2.id,
-                    "description": "string",
-                    "icon_id": 12,
-                    "id": 2,
-                    "name": "Bravo",
-                    "short_description": "bravo-description",
-                },
-            ],
-        )
-
-        # when
-        obj: EveAncestry
-        obj, created = EveAncestry.objects.update_or_create_esi(id=2)
-
-        # then
-        self.assertTrue(created)
-        self.assertEqual(obj.id, 2)
-        self.assertEqual(obj.name, "Bravo")
-        self.assertEqual(obj.icon_id, 12)
-        self.assertEqual(obj.eve_bloodline, bloodline_2)
-        self.assertEqual(obj.short_description, "bravo-description")
-
-    @pook.on
-    def test_raise_404_exception_when_object_not_found(self):
-        # given
-        bloodline = EveBloodlineFactory()
-        pook.get(
-            make_esi_url("universe/ancestries"),
-            reply=200,
-            response_json=[
-                {
-                    "bloodline_id": bloodline.id,
-                    "description": "string",
-                    "icon_id": 11,
-                    "id": 1,
-                    "name": "Alpha",
-                    "short_description": "alpha-description",
-                }
-            ],
-        )
-
-        # when/then
-        with self.assertRaises(HTTPClientError) as ex:
-            EveAncestry.objects.update_or_create_esi(id=666)
-            self.assertEqual(ex.exception.status_code, 404)
-
-
-class TestEveAsteroidBelt(TestCase):
-    @classmethod
-    def setUpClass(cls):
-        super().setUpClass()
-        cache.clear()
-
-    @pook.on
-    def test_create_from_esi(self):
-        # given
-        belt_id = 40349487
-        planet = EvePlanetFactory()
-        solar_system: EveSolarSystem = planet.eve_solar_system
-        position = PositionFactory()
-        obj_name = "Enaluri III - Asteroid Belt 1"
-        pook.get(
-            make_esi_url(f"universe/asteroid_belts/{belt_id}"),
-            reply=200,
-            response_json={
-                "name": obj_name,
-                "position": position,
-                "system_id": solar_system.id,
-            },
-        )
-        pook.get(
-            make_esi_url(f"universe/systems/{solar_system.id}"),
-            reply=200,
-            response_json={
-                "constellation_id": solar_system.eve_constellation.id,
-                "name": "Enaluri",
-                "planets": [{"asteroid_belts": [belt_id], "planet_id": planet.id}],
-                "position": {
-                    "x": solar_system.position_x,
-                    "y": solar_system.position_y,
-                    "z": solar_system.position_z,
-                },
-                "security_status": solar_system.security_status,
-                "system_id": solar_system.id,
-            },
-        )
-
-        # when
-        obj: EveAsteroidBelt
-        obj, created = EveAsteroidBelt.objects.get_or_create_esi(id=belt_id)
-
-        # then
-        self.assertTrue(created)
-        self.assertEqual(obj.id, belt_id)
-        self.assertEqual(obj.name, obj_name)
-        self.assertEqual(obj.position_x, position["x"])
-        self.assertEqual(obj.position_y, position["y"])
-        self.assertEqual(obj.position_z, position["z"])
-        self.assertEqual(obj.eve_planet, planet)
-
-
 @patch(MODELS_PATH + ".EVEUNIVERSE_LOAD_DOGMAS", True)
-class TestEveCategory(TestCase):
+class TestCommonFeatures(TestCase):
     """These tests also cover the manager functionality shared among
     all entity models. (1/2)
     """
@@ -373,7 +242,7 @@ class TestEveCategory(TestCase):
 @patch(MODELS_PATH + ".EVEUNIVERSE_LOAD_GRAPHICS", False)
 @patch(MODELS_PATH + ".EVEUNIVERSE_LOAD_DOGMAS", False)
 @patch(MODELS_PATH + ".EVEUNIVERSE_LOAD_MARKET_GROUPS", False)
-class TestEveCategory_UpdateAll(TestCase):
+class TestUpdateOrCreateAllESI(TestCase):
     """These tests also cover the manager functionality shared among
     all entity models. (2/2)
     """
@@ -655,316 +524,359 @@ class TestBulkGetOrCreateEsi(TestCase):
         self.assertEqual({x.id for x in result}, {obj_1_id, obj_2_id})
 
 
-class TestEveConstellation(TestCase):
-    @classmethod
-    def setUpClass(cls):
-        super().setUpClass()
-        cache.clear()
+class TestEsiMapping(TestCase):
+    maxDiff = None
 
-    @pook.on
-    def test_create_from_esi(self):
-        # given
-        constellation_id = 20000785
-        region_id = 10000069
-        pook.get(
-            make_esi_url(f"universe/regions/{region_id}"),
-            reply=200,
-            response_json={
-                "constellations": [constellation_id],
-                "description": "...",
-                "name": "Black Rise",
-                "region_id": region_id,
-            },
-        )
-        position = PositionFactory()
-        pook.get(
-            make_esi_url(f"universe/constellations/{constellation_id}"),
-            reply=200,
-            response_json={
-                "constellation_id": constellation_id,
-                "name": "Ishaga",
-                "position": position,
-                "region_id": region_id,
-                "systems": [30045339],
-            },
-        )
-
-        # when
-        obj: EveConstellation
-        obj, created = EveConstellation.objects.update_or_create_esi(
-            id=constellation_id
-        )
-
-        # then
-        self.assertTrue(created)
-        self.assertEqual(obj.id, constellation_id)
-        self.assertEqual(obj.name, "Ishaga")
-        self.assertEqual(obj.position_x, position["x"])
-        self.assertEqual(obj.position_y, position["y"])
-        self.assertEqual(obj.position_z, position["z"])
-        self.assertEqual(obj.eve_region.id, region_id)
-        self.assertEqual(obj.eve_entity_category(), EveEntity.CATEGORY_CONSTELLATION)
-
-
-@patch(MODELS_PATH + ".EVEUNIVERSE_LOAD_DOGMAS", True)
-class TestEveDogmaAttribute(TestCase):
-    @classmethod
-    def setUpClass(cls):
-        super().setUpClass()
-        cache.clear()
-
-    @pook.on
-    def test_can_create_from_esi(self):
-        # given
-        attribute_id = 271
-        pook.get(
-            make_esi_url(f"dogma/attributes/{attribute_id}"),
-            reply=200,
-            response_json={
-                "attribute_id": attribute_id,
-                "default_value": 1,
-                "description": "Multiplies EM damage taken by shield",
-                "display_name": "Shield EM Damage Resistance",
-                "icon_id": 1396,
-                "name": "shieldEmDamageResonance",
-                "published": True,
-                "unit_id": 108,
-            },
-        )
-
-        # when
-        obj: EveDogmaAttribute
-        obj, created = EveDogmaAttribute.objects.update_or_create_esi(id=attribute_id)
-
-        # then
-        self.assertTrue(created)
-        self.assertEqual(obj.id, attribute_id)
-        self.assertEqual(obj.name, "shieldEmDamageResonance")
-        self.assertEqual(obj.default_value, 1)
-        self.assertEqual(obj.description, "Multiplies EM damage taken by shield")
-        self.assertEqual(obj.display_name, "Shield EM Damage Resistance")
-        self.assertEqual(obj.icon_id, 1396)
-        self.assertTrue(obj.published)
-        self.assertEqual(obj.eve_unit.id, 108)
-
-
-@patch(MODELS_PATH + ".EVEUNIVERSE_LOAD_DOGMAS", True)
-class TestEveDogmaEffect(TestCase):
-    @classmethod
-    def setUpClass(cls):
-        super().setUpClass()
-        cache.clear()
-
-    @pook.on
-    def test_can_create_from_esi(self):
-        # given
-        attribute_1_id = 271
-        attribute_2_id = 463
-        effect_id = 1816
-        pook.get(
-            make_esi_url(f"dogma/attributes/{attribute_1_id}"),
-            reply=200,
-            response_json={
-                "attribute_id": attribute_1_id,
-                "default_value": 1,
-                "description": "Multiplies EM damage taken by shield",
-                "display_name": "Shield EM Damage Resistance",
-                "icon_id": 1396,
-                "name": "shieldEmDamageResonance",
-                "published": True,
-                "unit_id": 108,
-            },
-        )
-        pook.get(
-            make_esi_url(f"dogma/attributes/{attribute_2_id}"),
-            reply=200,
-            response_json={
-                "attribute_id": attribute_2_id,
-                "default_value": 0,
-                "description": "",
-                "display_name": "",
-                "high_is_good": True,
-                "icon_id": 0,
-                "name": "shipBonusCF",
-                "stackable": True,
-            },
-        )
-        pook.get(
-            make_esi_url(f"dogma/effects/{effect_id}"),
-            reply=200,
-            response_json={
-                "description": "",
-                "display_name": "",
-                "effect_category": 0,
-                "effect_id": effect_id,
-                "icon_id": 0,
-                "modifiers": [
-                    {
-                        "domain": "shipID",
-                        "func": "ItemModifier",
-                        "modified_attribute_id": attribute_1_id,
-                        "modifying_attribute_id": attribute_2_id,
-                        "operator": 6,
-                    }
-                ],
-                "name": "shipShieldEMResistanceCF2",
-            },
-        )
-
-        # when
-        obj: EveDogmaEffect
-        obj, created = EveDogmaEffect.objects.update_or_create_esi(id=effect_id)
-
-        # then
-        self.assertTrue(created)
-        self.assertEqual(obj.id, effect_id)
-        self.assertEqual(obj.name, "shipShieldEMResistanceCF2")
-        self.assertEqual(obj.display_name, "")
-        self.assertEqual(obj.effect_category, 0)
-        self.assertEqual(obj.icon_id, 0)
-        modifiers = obj.modifiers.first()
-        self.assertEqual(modifiers.domain, "shipID")
-        self.assertEqual(modifiers.func, "ItemModifier")
+    def test_single_pk(self):
+        mapping = EveCategory._esi_field_mappings()
+        self.assertEqual(len(mapping.keys()), 3)
         self.assertEqual(
-            modifiers.modified_attribute,
-            EveDogmaAttribute.objects.get(id=attribute_1_id),
+            mapping["id"],
+            _EsiFieldMapping(
+                esi_name="category_id",
+                is_optional=False,
+                is_pk=True,
+                is_fk=False,
+                related_model=None,
+                is_parent_fk=False,
+                is_charfield=False,
+                create_related=True,
+            ),
         )
         self.assertEqual(
-            modifiers.modifying_attribute,
-            EveDogmaAttribute.objects.get(id=463),
+            mapping["name"],
+            _EsiFieldMapping(
+                esi_name="name",
+                is_optional=True,
+                is_pk=False,
+                is_fk=False,
+                related_model=None,
+                is_parent_fk=False,
+                is_charfield=True,
+                create_related=True,
+            ),
         )
-        self.assertEqual(modifiers.operator, 6)
-
-
-class TestEveFaction(TestCase):
-    @classmethod
-    def setUpClass(cls):
-        super().setUpClass()
-        cache.clear()
-
-    @pook.on
-    def test_can_create_from_esi(self):
-        # given
-        faction_id = 500001
-        solar_system = EveSolarSystemFactory()
-        pook.get(
-            make_esi_url("universe/factions"),
-            reply=200,
-            response_json=[
-                {
-                    "corporation_id": 1000035,
-                    "description": "The Caldari State is ruled by several mega-corporations. ...",
-                    "faction_id": faction_id,
-                    "is_unique": True,
-                    "militia_corporation_id": 1000180,
-                    "name": "Caldari State",
-                    "size_factor": 5,
-                    "solar_system_id": solar_system.id,
-                    "station_count": 1503,
-                    "station_system_count": 503,
-                },
-                {
-                    "corporation_id": 1000051,
-                    "description": "The Minmatar Republic was formed ...",
-                    "faction_id": 500002,
-                    "is_unique": True,
-                    "militia_corporation_id": 1000182,
-                    "name": "Minmatar Republic",
-                    "size_factor": 5,
-                    "solar_system_id": solar_system.id,
-                    "station_count": 570,
-                    "station_system_count": 291,
-                },
-            ],
+        self.assertEqual(
+            mapping["published"],
+            _EsiFieldMapping(
+                esi_name="published",
+                is_optional=False,
+                is_pk=False,
+                is_fk=False,
+                related_model=None,
+                is_parent_fk=False,
+                is_charfield=False,
+                create_related=True,
+            ),
         )
 
-        # when
-        obj: EveFaction
-        obj, created = EveFaction.objects.get_or_create_esi(id=faction_id)
+    def test_with_fk(self):
+        mapping = EveConstellation._esi_field_mappings()
+        self.assertEqual(len(mapping.keys()), 6)
+        self.assertEqual(
+            mapping["id"],
+            _EsiFieldMapping(
+                esi_name="constellation_id",
+                is_optional=False,
+                is_pk=True,
+                is_fk=False,
+                related_model=None,
+                is_parent_fk=False,
+                is_charfield=False,
+                create_related=True,
+            ),
+        )
+        self.assertEqual(
+            mapping["name"],
+            _EsiFieldMapping(
+                esi_name="name",
+                is_optional=True,
+                is_pk=False,
+                is_fk=False,
+                related_model=None,
+                is_parent_fk=False,
+                is_charfield=True,
+                create_related=True,
+            ),
+        )
+        self.assertEqual(
+            mapping["eve_region"],
+            _EsiFieldMapping(
+                esi_name="region_id",
+                is_optional=False,
+                is_pk=False,
+                is_fk=True,
+                related_model=EveRegion,
+                is_parent_fk=False,
+                is_charfield=False,
+                create_related=True,
+            ),
+        )
+        self.assertEqual(
+            mapping["position_x"],
+            _EsiFieldMapping(
+                esi_name=("position", "x"),
+                is_optional=True,
+                is_pk=False,
+                is_fk=False,
+                related_model=None,
+                is_parent_fk=False,
+                is_charfield=False,
+                create_related=True,
+            ),
+        )
+        self.assertEqual(
+            mapping["position_y"],
+            _EsiFieldMapping(
+                esi_name=("position", "y"),
+                is_optional=True,
+                is_pk=False,
+                is_fk=False,
+                related_model=None,
+                is_parent_fk=False,
+                is_charfield=False,
+                create_related=True,
+            ),
+        )
+        self.assertEqual(
+            mapping["position_z"],
+            _EsiFieldMapping(
+                esi_name=("position", "z"),
+                is_optional=True,
+                is_pk=False,
+                is_fk=False,
+                related_model=None,
+                is_parent_fk=False,
+                is_charfield=False,
+                create_related=True,
+            ),
+        )
 
-        # then
-        self.assertTrue(created)
-        self.assertEqual(obj.id, faction_id)
-        self.assertEqual(obj.name, "Caldari State")
-        self.assertTrue(obj.is_unique)
-        self.assertEqual(obj.militia_corporation_id, 1000180)
-        self.assertEqual(obj.eve_solar_system, solar_system)
-        self.assertEqual(obj.size_factor, 5)
-        self.assertEqual(obj.station_count, 1503)
-        self.assertEqual(obj.station_system_count, 503)
-        self.assertEqual(obj.eve_entity_category(), EveEntity.CATEGORY_FACTION)
+    def test_optional_fields(self):
+        mapping = EveAncestry._esi_field_mappings()
+        self.assertEqual(len(mapping.keys()), 6)
+        self.assertEqual(
+            mapping["id"],
+            _EsiFieldMapping(
+                esi_name="id",
+                is_optional=False,
+                is_pk=True,
+                is_fk=False,
+                related_model=None,
+                is_parent_fk=False,
+                is_charfield=False,
+                create_related=True,
+            ),
+        )
+        self.assertEqual(
+            mapping["name"],
+            _EsiFieldMapping(
+                esi_name="name",
+                is_optional=True,
+                is_pk=False,
+                is_fk=False,
+                related_model=None,
+                is_parent_fk=False,
+                is_charfield=True,
+                create_related=True,
+            ),
+        )
+        self.assertEqual(
+            mapping["eve_bloodline"],
+            _EsiFieldMapping(
+                esi_name="bloodline_id",
+                is_optional=False,
+                is_pk=False,
+                is_fk=True,
+                related_model=EveBloodline,
+                is_parent_fk=False,
+                is_charfield=False,
+                create_related=True,
+            ),
+        )
+        self.assertEqual(
+            mapping["description"],
+            _EsiFieldMapping(
+                esi_name="description",
+                is_optional=False,
+                is_pk=False,
+                is_fk=False,
+                related_model=None,
+                is_parent_fk=False,
+                is_charfield=True,
+                create_related=True,
+            ),
+        )
+        self.assertEqual(
+            mapping["icon_id"],
+            _EsiFieldMapping(
+                esi_name="icon_id",
+                is_optional=True,
+                is_pk=False,
+                is_fk=False,
+                related_model=None,
+                is_parent_fk=False,
+                is_charfield=False,
+                create_related=True,
+            ),
+        )
+        self.assertEqual(
+            mapping["short_description"],
+            _EsiFieldMapping(
+                esi_name="short_description",
+                is_optional=True,
+                is_pk=False,
+                is_fk=False,
+                related_model=None,
+                is_parent_fk=False,
+                is_charfield=True,
+                create_related=True,
+            ),
+        )
 
+    def test_inline_model(self):
+        mapping = EveTypeDogmaEffect._esi_field_mappings()
+        self.assertEqual(len(mapping.keys()), 3)
+        self.assertEqual(
+            mapping["eve_type"],
+            _EsiFieldMapping(
+                esi_name="eve_type",
+                is_optional=False,
+                is_pk=True,
+                is_fk=True,
+                related_model=EveType,
+                is_parent_fk=True,
+                is_charfield=False,
+                create_related=True,
+            ),
+        )
+        self.assertEqual(
+            mapping["eve_dogma_effect"],
+            _EsiFieldMapping(
+                esi_name="effect_id",
+                is_optional=False,
+                is_pk=True,
+                is_fk=True,
+                related_model=EveDogmaEffect,
+                is_parent_fk=False,
+                is_charfield=False,
+                create_related=True,
+            ),
+        )
+        self.assertEqual(
+            mapping["is_default"],
+            _EsiFieldMapping(
+                esi_name="is_default",
+                is_optional=False,
+                is_pk=False,
+                is_fk=False,
+                related_model=None,
+                is_parent_fk=False,
+                is_charfield=False,
+                create_related=True,
+            ),
+        )
 
-class TestEveGraphic(TestCase):
-    @classmethod
-    def setUpClass(cls):
-        super().setUpClass()
-        cache.clear()
-
-    @pook.on
-    def test_create_from_esi(self):
-        # given
-        id = 314
-        pook.get(
-            make_esi_url(f"universe/graphics/{id}"),
-            reply=200,
-            response_json={
-                "graphic_id": 314,
-                "sof_dna": "cf7_t1:caldaribase:caldari",
-                "sof_fation_name": "caldaribase",
-                "sof_hull_name": "cf7_t1",
-                "sof_race_name": "caldari",
+    @patch(MODELS_PATH + ".EVEUNIVERSE_LOAD_GRAPHICS", True)
+    @patch(MODELS_PATH + ".EVEUNIVERSE_LOAD_MARKET_GROUPS", True)
+    @patch(MODELS_PATH + ".EVEUNIVERSE_LOAD_DOGMAS", True)
+    def test_esi_field_mapping(self):
+        mapping = EveType._esi_field_mappings()
+        self.assertSetEqual(
+            set(mapping.keys()),
+            {
+                "id",
+                "name",
+                "description",
+                "capacity",
+                "eve_group",
+                "eve_graphic",
+                "icon_id",
+                "eve_market_group",
+                "mass",
+                "packaged_volume",
+                "portion_size",
+                "radius",
+                "published",
+                "volume",
             },
         )
 
+
+class TestDetermineEnabledSections(TestCase):
+    def test_should_return_empty_1(self):
         # when
-        obj: EveGraphic
-        obj, created = EveGraphic.objects.get_or_create_esi(id=id)
-
+        with (
+            patch(MODELS_PATH + ".EVEUNIVERSE_LOAD_ASTEROID_BELTS", False),
+            patch(MODELS_PATH + ".EVEUNIVERSE_LOAD_DOGMAS", False),
+            patch(MODELS_PATH + ".EVEUNIVERSE_LOAD_GRAPHICS", False),
+            patch(MODELS_PATH + ".EVEUNIVERSE_LOAD_MARKET_GROUPS", False),
+            patch(MODELS_PATH + ".EVEUNIVERSE_LOAD_MOONS", False),
+            patch(MODELS_PATH + ".EVEUNIVERSE_LOAD_PLANETS", False),
+            patch(MODELS_PATH + ".EVEUNIVERSE_LOAD_STARGATES", False),
+            patch(MODELS_PATH + ".EVEUNIVERSE_LOAD_STARS", False),
+            patch(MODELS_PATH + ".EVEUNIVERSE_LOAD_STATIONS", False),
+            patch(MODELS_PATH + ".EVEUNIVERSE_LOAD_TYPE_MATERIALS", False),
+        ):
+            result = determine_effective_sections()
         # then
-        self.assertTrue(created)
-        self.assertEqual(obj.id, id)
-        self.assertEqual(obj.sof_dna, "cf7_t1:caldaribase:caldari")
-        self.assertEqual(obj.sof_fation_name, "caldaribase")
-        self.assertEqual(obj.sof_hull_name, "cf7_t1")
-        self.assertEqual(obj.sof_race_name, "caldari")
+        self.assertSetEqual(result, set())
 
+    def test_should_return_empty_2(self):
+        # when
+        with (
+            patch(MODELS_PATH + ".EVEUNIVERSE_LOAD_ASTEROID_BELTS", False),
+            patch(MODELS_PATH + ".EVEUNIVERSE_LOAD_DOGMAS", False),
+            patch(MODELS_PATH + ".EVEUNIVERSE_LOAD_GRAPHICS", False),
+            patch(MODELS_PATH + ".EVEUNIVERSE_LOAD_MARKET_GROUPS", False),
+            patch(MODELS_PATH + ".EVEUNIVERSE_LOAD_MOONS", False),
+            patch(MODELS_PATH + ".EVEUNIVERSE_LOAD_PLANETS", False),
+            patch(MODELS_PATH + ".EVEUNIVERSE_LOAD_STARGATES", False),
+            patch(MODELS_PATH + ".EVEUNIVERSE_LOAD_STARS", False),
+            patch(MODELS_PATH + ".EVEUNIVERSE_LOAD_STATIONS", False),
+            patch(MODELS_PATH + ".EVEUNIVERSE_LOAD_TYPE_MATERIALS", False),
+        ):
+            result = determine_effective_sections(None)
+        # then
+        self.assertSetEqual(result, set())
 
-class TestEveGroup(TestCase):
-    @classmethod
-    def setUpClass(cls):
-        super().setUpClass()
-        cache.clear()
+    def test_should_return_global_section(self):
+        # when
+        with (
+            patch(MODELS_PATH + ".EVEUNIVERSE_LOAD_ASTEROID_BELTS", False),
+            patch(MODELS_PATH + ".EVEUNIVERSE_LOAD_DOGMAS", True),
+            patch(MODELS_PATH + ".EVEUNIVERSE_LOAD_GRAPHICS", False),
+            patch(MODELS_PATH + ".EVEUNIVERSE_LOAD_MARKET_GROUPS", False),
+            patch(MODELS_PATH + ".EVEUNIVERSE_LOAD_MOONS", False),
+            patch(MODELS_PATH + ".EVEUNIVERSE_LOAD_PLANETS", False),
+            patch(MODELS_PATH + ".EVEUNIVERSE_LOAD_STARGATES", False),
+            patch(MODELS_PATH + ".EVEUNIVERSE_LOAD_STARS", False),
+            patch(MODELS_PATH + ".EVEUNIVERSE_LOAD_STATIONS", False),
+            patch(MODELS_PATH + ".EVEUNIVERSE_LOAD_TYPE_MATERIALS", False),
+        ):
+            result = determine_effective_sections()
+        # then
+        self.assertSetEqual(result, {EveType.Section.DOGMAS})
 
-    @pook.on
-    def test_can_create_from_esi(self):
-        # given
-        category_id = 6
-        EveCategoryFactory(id=category_id)
-        group_id = 25
-        group_name = "Frigate"
-        pook.get(
-            make_esi_url(f"universe/groups/{group_id}"),
-            reply=200,
-            response_json={
-                "category_id": category_id,
-                "group_id": group_id,
-                "name": group_name,
-                "published": True,
-                "types": [603],
-            },
+    def test_should_combine_global_and_local_sections(self):
+        # when
+        with (
+            patch(MODELS_PATH + ".EVEUNIVERSE_LOAD_ASTEROID_BELTS", False),
+            patch(MODELS_PATH + ".EVEUNIVERSE_LOAD_DOGMAS", True),
+            patch(MODELS_PATH + ".EVEUNIVERSE_LOAD_GRAPHICS", False),
+            patch(MODELS_PATH + ".EVEUNIVERSE_LOAD_MARKET_GROUPS", False),
+            patch(MODELS_PATH + ".EVEUNIVERSE_LOAD_MOONS", False),
+            patch(MODELS_PATH + ".EVEUNIVERSE_LOAD_PLANETS", False),
+            patch(MODELS_PATH + ".EVEUNIVERSE_LOAD_STARGATES", False),
+            patch(MODELS_PATH + ".EVEUNIVERSE_LOAD_STARS", False),
+            patch(MODELS_PATH + ".EVEUNIVERSE_LOAD_STATIONS", False),
+            patch(MODELS_PATH + ".EVEUNIVERSE_LOAD_TYPE_MATERIALS", False),
+        ):
+            result = determine_effective_sections(["type_materials"])
+        # then
+        self.assertSetEqual(
+            result, {EveType.Section.DOGMAS, EveType.Section.TYPE_MATERIALS}
         )
 
-        # when
-        obj: EveGroup
-        obj, created = EveGroup.objects.get_or_create_esi(id=group_id)
 
-        # then
-        self.assertTrue(created)
-        self.assertEqual(obj.id, group_id)
-        self.assertEqual(obj.name, group_name)
-        self.assertTrue(obj.published)
-
-
-# -------
 # -------

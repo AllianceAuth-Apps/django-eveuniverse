@@ -1,33 +1,37 @@
+import datetime as dt
 from typing import NamedTuple
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 import pook
 from django.core.cache import cache
 from django.test import TestCase
 from django.test.utils import override_settings
+from django.utils.timezone import now
 
 from eveuniverse.constants import EveCategoryId
 from eveuniverse.models import (
-    EveAncestry,
-    EveBloodline,
     EveCategory,
-    EveConstellation,
+    EveDogmaAttribute,
     EveDogmaEffect,
     EveEntity,
-    EveRegion,
+    EveGraphic,
+    EveGroup,
+    EveMarketGroup,
+    EveMarketPrice,
     EveType,
     EveTypeDogmaAttribute,
     EveTypeDogmaEffect,
     EveUnit,
 )
-from eveuniverse.models.base import _EsiFieldMapping, determine_effective_sections
 from eveuniverse.tests.testdata.factories_2 import (
     BlueprintTypeFactory,
+    EveCategoryFactory,
     EveDogmaAttributeFactory,
     EveDogmaEffectFactory,
     EveGraphicFactory,
     EveGroupFactory,
     EveMarketGroupFactory,
+    EveMarketPriceFactory,
     EveTypeFactory,
     SKINTypeFactory,
     make_esi_url,
@@ -36,7 +40,402 @@ from eveuniverse.tests.testdata.factories_2 import (
 MODELS_PATH = "eveuniverse.models"
 
 
-class TestEveType(TestCase):
+class TestEveCategory(TestCase):
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cache.clear()
+
+    @pook.on
+    def test_should_create_object_from_esi(self):
+        # given
+        category_id = 6
+        pook.get(
+            make_esi_url(f"universe/categories/{category_id}"),
+            reply=200,
+            response_json={
+                "category_id": category_id,
+                "groups": [25, 26],
+                "name": "Ship",
+                "published": True,
+            },
+        )
+
+        # when
+        obj: EveCategory
+        obj, created = EveCategory.objects.get_or_create_esi(id=category_id)
+
+        # then
+        self.assertTrue(created)
+        self.assertEqual(obj.id, category_id)
+        self.assertEqual(obj.name, "Ship")
+        self.assertTrue(obj.published)
+        self.assertEqual(obj.eve_entity_category(), "")
+
+
+@patch(MODELS_PATH + ".base.EVEUNIVERSE_LOAD_DOGMAS", True)
+class TestEveDogmaAttribute(TestCase):
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cache.clear()
+
+    @pook.on
+    def test_can_create_from_esi(self):
+        # given
+        attribute_id = 271
+        pook.get(
+            make_esi_url(f"dogma/attributes/{attribute_id}"),
+            reply=200,
+            response_json={
+                "attribute_id": attribute_id,
+                "default_value": 1,
+                "description": "Multiplies EM damage taken by shield",
+                "display_name": "Shield EM Damage Resistance",
+                "icon_id": 1396,
+                "name": "shieldEmDamageResonance",
+                "published": True,
+                "unit_id": 108,
+            },
+        )
+
+        # when
+        obj: EveDogmaAttribute
+        obj, created = EveDogmaAttribute.objects.update_or_create_esi(id=attribute_id)
+
+        # then
+        self.assertTrue(created)
+        self.assertEqual(obj.id, attribute_id)
+        self.assertEqual(obj.name, "shieldEmDamageResonance")
+        self.assertEqual(obj.default_value, 1)
+        self.assertEqual(obj.description, "Multiplies EM damage taken by shield")
+        self.assertEqual(obj.display_name, "Shield EM Damage Resistance")
+        self.assertEqual(obj.icon_id, 1396)
+        self.assertTrue(obj.published)
+        self.assertEqual(obj.eve_unit.id, 108)
+
+
+@patch(MODELS_PATH + ".base.EVEUNIVERSE_LOAD_DOGMAS", True)
+class TestEveDogmaEffect(TestCase):
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cache.clear()
+
+    @pook.on
+    def test_can_create_from_esi(self):
+        # given
+        attribute_1_id = 271
+        attribute_2_id = 463
+        effect_id = 1816
+        pook.get(
+            make_esi_url(f"dogma/attributes/{attribute_1_id}"),
+            reply=200,
+            response_json={
+                "attribute_id": attribute_1_id,
+                "default_value": 1,
+                "description": "Multiplies EM damage taken by shield",
+                "display_name": "Shield EM Damage Resistance",
+                "icon_id": 1396,
+                "name": "shieldEmDamageResonance",
+                "published": True,
+                "unit_id": 108,
+            },
+        )
+        pook.get(
+            make_esi_url(f"dogma/attributes/{attribute_2_id}"),
+            reply=200,
+            response_json={
+                "attribute_id": attribute_2_id,
+                "default_value": 0,
+                "description": "",
+                "display_name": "",
+                "high_is_good": True,
+                "icon_id": 0,
+                "name": "shipBonusCF",
+                "stackable": True,
+            },
+        )
+        pook.get(
+            make_esi_url(f"dogma/effects/{effect_id}"),
+            reply=200,
+            response_json={
+                "description": "",
+                "display_name": "",
+                "effect_category": 0,
+                "effect_id": effect_id,
+                "icon_id": 0,
+                "modifiers": [
+                    {
+                        "domain": "shipID",
+                        "func": "ItemModifier",
+                        "modified_attribute_id": attribute_1_id,
+                        "modifying_attribute_id": attribute_2_id,
+                        "operator": 6,
+                    }
+                ],
+                "name": "shipShieldEMResistanceCF2",
+            },
+        )
+
+        # when
+        obj: EveDogmaEffect
+        obj, created = EveDogmaEffect.objects.update_or_create_esi(id=effect_id)
+
+        # then
+        self.assertTrue(created)
+        self.assertEqual(obj.id, effect_id)
+        self.assertEqual(obj.name, "shipShieldEMResistanceCF2")
+        self.assertEqual(obj.display_name, "")
+        self.assertEqual(obj.effect_category, 0)
+        self.assertEqual(obj.icon_id, 0)
+        modifiers = obj.modifiers.first()
+        self.assertEqual(modifiers.domain, "shipID")
+        self.assertEqual(modifiers.func, "ItemModifier")
+        self.assertEqual(
+            modifiers.modified_attribute,
+            EveDogmaAttribute.objects.get(id=attribute_1_id),
+        )
+        self.assertEqual(
+            modifiers.modifying_attribute,
+            EveDogmaAttribute.objects.get(id=463),
+        )
+        self.assertEqual(modifiers.operator, 6)
+
+
+class TestEveGraphic(TestCase):
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cache.clear()
+
+    @pook.on
+    def test_create_from_esi(self):
+        # given
+        id = 314
+        pook.get(
+            make_esi_url(f"universe/graphics/{id}"),
+            reply=200,
+            response_json={
+                "graphic_id": 314,
+                "sof_dna": "cf7_t1:caldaribase:caldari",
+                "sof_fation_name": "caldaribase",
+                "sof_hull_name": "cf7_t1",
+                "sof_race_name": "caldari",
+            },
+        )
+
+        # when
+        obj: EveGraphic
+        obj, created = EveGraphic.objects.get_or_create_esi(id=id)
+
+        # then
+        self.assertTrue(created)
+        self.assertEqual(obj.id, id)
+        self.assertEqual(obj.sof_dna, "cf7_t1:caldaribase:caldari")
+        self.assertEqual(obj.sof_fation_name, "caldaribase")
+        self.assertEqual(obj.sof_hull_name, "cf7_t1")
+        self.assertEqual(obj.sof_race_name, "caldari")
+
+
+class TestEveGroup(TestCase):
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cache.clear()
+
+    @pook.on
+    def test_can_create_from_esi(self):
+        # given
+        category_id = 6
+        EveCategoryFactory(id=category_id)
+        group_id = 25
+        group_name = "Frigate"
+        pook.get(
+            make_esi_url(f"universe/groups/{group_id}"),
+            reply=200,
+            response_json={
+                "category_id": category_id,
+                "group_id": group_id,
+                "name": group_name,
+                "published": True,
+                "types": [603],
+            },
+        )
+
+        # when
+        obj: EveGroup
+        obj, created = EveGroup.objects.get_or_create_esi(id=group_id)
+
+        # then
+        self.assertTrue(created)
+        self.assertEqual(obj.id, group_id)
+        self.assertEqual(obj.name, group_name)
+        self.assertTrue(obj.published)
+
+
+class TestEveMarketGroup(TestCase):
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cache.clear()
+
+    @pook.on
+    def test_can_fetch_group(self):
+        # given
+        id = 4
+        name = "Ships"
+        description = "Capsuleer spaceships of all sizes and roles, ..."
+        pook.get(
+            make_esi_url(f"markets/groups/{id}"),
+            reply=200,
+            response_json={
+                "description": description,
+                "market_group_id": id,
+                "name": name,
+                "types": [],
+            },
+        )
+
+        # when
+        obj: EveMarketGroup
+        obj, created = EveMarketGroup.objects.get_or_create_esi(id=id)
+
+        # then
+        self.assertTrue(created)
+        self.assertEqual(obj.id, id)
+        self.assertEqual(obj.name, name)
+        self.assertEqual(obj.description, description)
+
+
+class TestEveMarketPriceManager(TestCase):
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cache.clear()
+
+    @pook.on
+    def test_add_new_prices_from_esi_but_for_existing_types_only(self):
+        # given
+        et = EveTypeFactory()
+        adjusted_price = 306988.09
+        average_price = 306292.67
+        pook.get(
+            make_esi_url("markets/prices"),
+            reply=200,
+            response_json=[
+                {
+                    "adjusted_price": adjusted_price,
+                    "average_price": average_price,
+                    "type_id": et.id,
+                },
+                {
+                    "adjusted_price": 123.45,
+                    "average_price": 678.90,
+                    "type_id": 420,
+                },
+            ],
+        )
+
+        # when
+        result = EveMarketPrice.objects.update_from_esi()
+
+        # then
+        self.assertEqual(result, 1)
+        self.assertEqual(EveMarketPrice.objects.count(), 1)
+        et.refresh_from_db()
+        self.assertEqual(float(et.market_price.adjusted_price), adjusted_price)
+        self.assertEqual(float(et.market_price.average_price), average_price)
+
+    @pook.on
+    def test_should_not_update_prices_which_are_not_stale_1(self):
+        # given
+        et = EveTypeFactory()
+        mp = EveMarketPriceFactory(eve_type=et)
+        pook.get(
+            make_esi_url("markets/prices"),
+            reply=200,
+            response_json=[
+                {
+                    "adjusted_price": 12,
+                    "average_price": 42,
+                    "type_id": et.id,
+                }
+            ],
+        )
+
+        # when
+        result = EveMarketPrice.objects.update_from_esi()
+
+        # then
+        self.assertEqual(result, 0)
+        et.refresh_from_db()
+        self.assertEqual(float(et.market_price.adjusted_price), mp.adjusted_price)
+        self.assertEqual(float(et.market_price.average_price), mp.average_price)
+
+    @pook.on
+    def test_should_update_stale_prices(self):
+        # given
+        et = EveTypeFactory()
+        mocked_update_at = now() - dt.timedelta(minutes=65)
+        with patch("django.utils.timezone.now", Mock(return_value=mocked_update_at)):
+            EveMarketPriceFactory(eve_type=et)
+
+        adjusted_price = 306988.09
+        average_price = 306292.67
+        pook.get(
+            make_esi_url("markets/prices"),
+            reply=200,
+            response_json=[
+                {
+                    "adjusted_price": adjusted_price,
+                    "average_price": average_price,
+                    "type_id": et.id,
+                },
+                {"adjusted_price": 123.45, "average_price": 678.90, "type_id": 420},
+            ],
+        )
+
+        # when
+        result = EveMarketPrice.objects.update_from_esi(minutes_until_stale=60)
+
+        # then
+        self.assertEqual(result, 1)
+        et.refresh_from_db()
+        self.assertEqual(float(et.market_price.adjusted_price), adjusted_price)
+        self.assertEqual(float(et.market_price.average_price), average_price)
+
+    @pook.on
+    def test_should_remove_obsolete_prices(self):
+        # given
+        et_1 = EveTypeFactory()
+        mp_1 = EveMarketPriceFactory(eve_type=et_1)
+        et_2 = EveTypeFactory()
+        EveMarketPriceFactory(eve_type=et_2)
+        pook.get(
+            make_esi_url("markets/prices"),
+            reply=200,
+            response_json=[
+                {
+                    "adjusted_price": 12,
+                    "average_price": 42,
+                    "type_id": et_1.id,
+                }
+            ],
+        )
+
+        # when
+        result = EveMarketPrice.objects.update_from_esi()
+
+        # then
+        self.assertEqual(result, 0)
+        self.assertEqual(EveMarketPrice.objects.count(), 1)
+        et_1.refresh_from_db()
+        self.assertEqual(float(et_1.market_price.adjusted_price), mp_1.adjusted_price)
+        self.assertEqual(float(et_1.market_price.average_price), mp_1.average_price)
+
+
+class TestEveType_Basics(TestCase):
     def test_should_return_value_as_str(self):
         self.assertEqual(str(EveType.Section.DOGMAS), "dogmas")
 
@@ -489,7 +888,7 @@ class TestEveType_ESI(TestCase):
 
 @patch(MODELS_PATH + ".base.EVEUNIVERSE_LOAD_MARKET_GROUPS", False)
 @patch(MODELS_PATH + ".base.EVEUNIVERSE_LOAD_DOGMAS", False)
-class TestEveTypeURLs(TestCase):
+class TestEveType_URLs(TestCase):
     def test_can_create_render_url(self):
         eve_type = EveTypeFactory(id=603)
         got = eve_type.render_url(256)
@@ -638,358 +1037,3 @@ class TestEveUnit(TestCase):
         obj = EveUnit.objects.get(id=10)
         self.assertEqual(obj.id, 10)
         self.assertEqual(obj.name, "Speed")
-
-
-class TestEsiMapping(TestCase):
-    maxDiff = None
-
-    def test_single_pk(self):
-        mapping = EveCategory._esi_field_mappings()
-        self.assertEqual(len(mapping.keys()), 3)
-        self.assertEqual(
-            mapping["id"],
-            _EsiFieldMapping(
-                esi_name="category_id",
-                is_optional=False,
-                is_pk=True,
-                is_fk=False,
-                related_model=None,
-                is_parent_fk=False,
-                is_charfield=False,
-                create_related=True,
-            ),
-        )
-        self.assertEqual(
-            mapping["name"],
-            _EsiFieldMapping(
-                esi_name="name",
-                is_optional=True,
-                is_pk=False,
-                is_fk=False,
-                related_model=None,
-                is_parent_fk=False,
-                is_charfield=True,
-                create_related=True,
-            ),
-        )
-        self.assertEqual(
-            mapping["published"],
-            _EsiFieldMapping(
-                esi_name="published",
-                is_optional=False,
-                is_pk=False,
-                is_fk=False,
-                related_model=None,
-                is_parent_fk=False,
-                is_charfield=False,
-                create_related=True,
-            ),
-        )
-
-    def test_with_fk(self):
-        mapping = EveConstellation._esi_field_mappings()
-        self.assertEqual(len(mapping.keys()), 6)
-        self.assertEqual(
-            mapping["id"],
-            _EsiFieldMapping(
-                esi_name="constellation_id",
-                is_optional=False,
-                is_pk=True,
-                is_fk=False,
-                related_model=None,
-                is_parent_fk=False,
-                is_charfield=False,
-                create_related=True,
-            ),
-        )
-        self.assertEqual(
-            mapping["name"],
-            _EsiFieldMapping(
-                esi_name="name",
-                is_optional=True,
-                is_pk=False,
-                is_fk=False,
-                related_model=None,
-                is_parent_fk=False,
-                is_charfield=True,
-                create_related=True,
-            ),
-        )
-        self.assertEqual(
-            mapping["eve_region"],
-            _EsiFieldMapping(
-                esi_name="region_id",
-                is_optional=False,
-                is_pk=False,
-                is_fk=True,
-                related_model=EveRegion,
-                is_parent_fk=False,
-                is_charfield=False,
-                create_related=True,
-            ),
-        )
-        self.assertEqual(
-            mapping["position_x"],
-            _EsiFieldMapping(
-                esi_name=("position", "x"),
-                is_optional=True,
-                is_pk=False,
-                is_fk=False,
-                related_model=None,
-                is_parent_fk=False,
-                is_charfield=False,
-                create_related=True,
-            ),
-        )
-        self.assertEqual(
-            mapping["position_y"],
-            _EsiFieldMapping(
-                esi_name=("position", "y"),
-                is_optional=True,
-                is_pk=False,
-                is_fk=False,
-                related_model=None,
-                is_parent_fk=False,
-                is_charfield=False,
-                create_related=True,
-            ),
-        )
-        self.assertEqual(
-            mapping["position_z"],
-            _EsiFieldMapping(
-                esi_name=("position", "z"),
-                is_optional=True,
-                is_pk=False,
-                is_fk=False,
-                related_model=None,
-                is_parent_fk=False,
-                is_charfield=False,
-                create_related=True,
-            ),
-        )
-
-    def test_optional_fields(self):
-        mapping = EveAncestry._esi_field_mappings()
-        self.assertEqual(len(mapping.keys()), 6)
-        self.assertEqual(
-            mapping["id"],
-            _EsiFieldMapping(
-                esi_name="id",
-                is_optional=False,
-                is_pk=True,
-                is_fk=False,
-                related_model=None,
-                is_parent_fk=False,
-                is_charfield=False,
-                create_related=True,
-            ),
-        )
-        self.assertEqual(
-            mapping["name"],
-            _EsiFieldMapping(
-                esi_name="name",
-                is_optional=True,
-                is_pk=False,
-                is_fk=False,
-                related_model=None,
-                is_parent_fk=False,
-                is_charfield=True,
-                create_related=True,
-            ),
-        )
-        self.assertEqual(
-            mapping["eve_bloodline"],
-            _EsiFieldMapping(
-                esi_name="bloodline_id",
-                is_optional=False,
-                is_pk=False,
-                is_fk=True,
-                related_model=EveBloodline,
-                is_parent_fk=False,
-                is_charfield=False,
-                create_related=True,
-            ),
-        )
-        self.assertEqual(
-            mapping["description"],
-            _EsiFieldMapping(
-                esi_name="description",
-                is_optional=False,
-                is_pk=False,
-                is_fk=False,
-                related_model=None,
-                is_parent_fk=False,
-                is_charfield=True,
-                create_related=True,
-            ),
-        )
-        self.assertEqual(
-            mapping["icon_id"],
-            _EsiFieldMapping(
-                esi_name="icon_id",
-                is_optional=True,
-                is_pk=False,
-                is_fk=False,
-                related_model=None,
-                is_parent_fk=False,
-                is_charfield=False,
-                create_related=True,
-            ),
-        )
-        self.assertEqual(
-            mapping["short_description"],
-            _EsiFieldMapping(
-                esi_name="short_description",
-                is_optional=True,
-                is_pk=False,
-                is_fk=False,
-                related_model=None,
-                is_parent_fk=False,
-                is_charfield=True,
-                create_related=True,
-            ),
-        )
-
-    def test_inline_model(self):
-        mapping = EveTypeDogmaEffect._esi_field_mappings()
-        self.assertEqual(len(mapping.keys()), 3)
-        self.assertEqual(
-            mapping["eve_type"],
-            _EsiFieldMapping(
-                esi_name="eve_type",
-                is_optional=False,
-                is_pk=True,
-                is_fk=True,
-                related_model=EveType,
-                is_parent_fk=True,
-                is_charfield=False,
-                create_related=True,
-            ),
-        )
-        self.assertEqual(
-            mapping["eve_dogma_effect"],
-            _EsiFieldMapping(
-                esi_name="effect_id",
-                is_optional=False,
-                is_pk=True,
-                is_fk=True,
-                related_model=EveDogmaEffect,
-                is_parent_fk=False,
-                is_charfield=False,
-                create_related=True,
-            ),
-        )
-        self.assertEqual(
-            mapping["is_default"],
-            _EsiFieldMapping(
-                esi_name="is_default",
-                is_optional=False,
-                is_pk=False,
-                is_fk=False,
-                related_model=None,
-                is_parent_fk=False,
-                is_charfield=False,
-                create_related=True,
-            ),
-        )
-
-    @patch(MODELS_PATH + ".base.EVEUNIVERSE_LOAD_GRAPHICS", True)
-    @patch(MODELS_PATH + ".base.EVEUNIVERSE_LOAD_MARKET_GROUPS", True)
-    @patch(MODELS_PATH + ".base.EVEUNIVERSE_LOAD_DOGMAS", True)
-    def test_EveType_mapping(self):
-        mapping = EveType._esi_field_mappings()
-        self.assertSetEqual(
-            set(mapping.keys()),
-            {
-                "id",
-                "name",
-                "description",
-                "capacity",
-                "eve_group",
-                "eve_graphic",
-                "icon_id",
-                "eve_market_group",
-                "mass",
-                "packaged_volume",
-                "portion_size",
-                "radius",
-                "published",
-                "volume",
-            },
-        )
-
-
-class TestDetermineEnabledSections(TestCase):
-    def test_should_return_empty_1(self):
-        # when
-        with (
-            patch(MODELS_PATH + ".base.EVEUNIVERSE_LOAD_ASTEROID_BELTS", False),
-            patch(MODELS_PATH + ".base.EVEUNIVERSE_LOAD_DOGMAS", False),
-            patch(MODELS_PATH + ".base.EVEUNIVERSE_LOAD_GRAPHICS", False),
-            patch(MODELS_PATH + ".base.EVEUNIVERSE_LOAD_MARKET_GROUPS", False),
-            patch(MODELS_PATH + ".base.EVEUNIVERSE_LOAD_MOONS", False),
-            patch(MODELS_PATH + ".base.EVEUNIVERSE_LOAD_PLANETS", False),
-            patch(MODELS_PATH + ".base.EVEUNIVERSE_LOAD_STARGATES", False),
-            patch(MODELS_PATH + ".base.EVEUNIVERSE_LOAD_STARS", False),
-            patch(MODELS_PATH + ".base.EVEUNIVERSE_LOAD_STATIONS", False),
-            patch(MODELS_PATH + ".base.EVEUNIVERSE_LOAD_TYPE_MATERIALS", False),
-        ):
-            result = determine_effective_sections()
-        # then
-        self.assertSetEqual(result, set())
-
-    def test_should_return_empty_2(self):
-        # when
-        with (
-            patch(MODELS_PATH + ".base.EVEUNIVERSE_LOAD_ASTEROID_BELTS", False),
-            patch(MODELS_PATH + ".base.EVEUNIVERSE_LOAD_DOGMAS", False),
-            patch(MODELS_PATH + ".base.EVEUNIVERSE_LOAD_GRAPHICS", False),
-            patch(MODELS_PATH + ".base.EVEUNIVERSE_LOAD_MARKET_GROUPS", False),
-            patch(MODELS_PATH + ".base.EVEUNIVERSE_LOAD_MOONS", False),
-            patch(MODELS_PATH + ".base.EVEUNIVERSE_LOAD_PLANETS", False),
-            patch(MODELS_PATH + ".base.EVEUNIVERSE_LOAD_STARGATES", False),
-            patch(MODELS_PATH + ".base.EVEUNIVERSE_LOAD_STARS", False),
-            patch(MODELS_PATH + ".base.EVEUNIVERSE_LOAD_STATIONS", False),
-            patch(MODELS_PATH + ".base.EVEUNIVERSE_LOAD_TYPE_MATERIALS", False),
-        ):
-            result = determine_effective_sections(None)
-        # then
-        self.assertSetEqual(result, set())
-
-    def test_should_return_global_section(self):
-        # when
-        with (
-            patch(MODELS_PATH + ".base.EVEUNIVERSE_LOAD_ASTEROID_BELTS", False),
-            patch(MODELS_PATH + ".base.EVEUNIVERSE_LOAD_DOGMAS", True),
-            patch(MODELS_PATH + ".base.EVEUNIVERSE_LOAD_GRAPHICS", False),
-            patch(MODELS_PATH + ".base.EVEUNIVERSE_LOAD_MARKET_GROUPS", False),
-            patch(MODELS_PATH + ".base.EVEUNIVERSE_LOAD_MOONS", False),
-            patch(MODELS_PATH + ".base.EVEUNIVERSE_LOAD_PLANETS", False),
-            patch(MODELS_PATH + ".base.EVEUNIVERSE_LOAD_STARGATES", False),
-            patch(MODELS_PATH + ".base.EVEUNIVERSE_LOAD_STARS", False),
-            patch(MODELS_PATH + ".base.EVEUNIVERSE_LOAD_STATIONS", False),
-            patch(MODELS_PATH + ".base.EVEUNIVERSE_LOAD_TYPE_MATERIALS", False),
-        ):
-            result = determine_effective_sections()
-        # then
-        self.assertSetEqual(result, {EveType.Section.DOGMAS})
-
-    def test_should_combine_global_and_local_sections(self):
-        # when
-        with (
-            patch(MODELS_PATH + ".base.EVEUNIVERSE_LOAD_ASTEROID_BELTS", False),
-            patch(MODELS_PATH + ".base.EVEUNIVERSE_LOAD_DOGMAS", True),
-            patch(MODELS_PATH + ".base.EVEUNIVERSE_LOAD_GRAPHICS", False),
-            patch(MODELS_PATH + ".base.EVEUNIVERSE_LOAD_MARKET_GROUPS", False),
-            patch(MODELS_PATH + ".base.EVEUNIVERSE_LOAD_MOONS", False),
-            patch(MODELS_PATH + ".base.EVEUNIVERSE_LOAD_PLANETS", False),
-            patch(MODELS_PATH + ".base.EVEUNIVERSE_LOAD_STARGATES", False),
-            patch(MODELS_PATH + ".base.EVEUNIVERSE_LOAD_STARS", False),
-            patch(MODELS_PATH + ".base.EVEUNIVERSE_LOAD_STATIONS", False),
-            patch(MODELS_PATH + ".base.EVEUNIVERSE_LOAD_TYPE_MATERIALS", False),
-        ):
-            result = determine_effective_sections(["type_materials"])
-        # then
-        self.assertSetEqual(
-            result, {EveType.Section.DOGMAS, EveType.Section.TYPE_MATERIALS}
-        )

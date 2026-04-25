@@ -1,27 +1,28 @@
-import datetime as dt
-from unittest.mock import Mock, patch
+from unittest.mock import patch
 
 import pook
 from django.core.cache import cache
 from django.test import TestCase
-from django.utils.timezone import now
 
 from eveuniverse.models import (
     EveAsteroidBelt,
+    EveConstellation,
     EveEntity,
-    EveMarketGroup,
-    EveMarketPrice,
     EveMoon,
     EvePlanet,
     EveRace,
     EveRegion,
     EveSolarSystem,
+    EveStar,
+    EveStargate,
+    EveStation,
 )
 from eveuniverse.tests.testdata.factories_2 import (
-    EveMarketPriceFactory,
     EveMoonFactory,
     EvePlanetFactory,
+    EveRaceFactory,
     EveSolarSystemFactory,
+    EveStargateFactory,
     EveTypeFactory,
     PositionFactory,
     make_esi_url,
@@ -30,165 +31,115 @@ from eveuniverse.tests.testdata.factories_2 import (
 MODELS_PATH = "eveuniverse.models.base"
 
 
-class TestEveMarketGroup(TestCase):
+class TestEveAsteroidBelt(TestCase):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
         cache.clear()
 
     @pook.on
-    def test_can_fetch_group(self):
+    def test_create_from_esi(self):
         # given
-        id = 4
-        name = "Ships"
-        description = "Capsuleer spaceships of all sizes and roles, ..."
+        belt_id = 40349487
+        planet = EvePlanetFactory()
+        solar_system: EveSolarSystem = planet.eve_solar_system
+        position = PositionFactory()
+        obj_name = "Enaluri III - Asteroid Belt 1"
         pook.get(
-            make_esi_url(f"markets/groups/{id}"),
+            make_esi_url(f"universe/asteroid_belts/{belt_id}"),
             reply=200,
             response_json={
-                "description": description,
-                "market_group_id": id,
-                "name": name,
-                "types": [],
+                "name": obj_name,
+                "position": position,
+                "system_id": solar_system.id,
+            },
+        )
+        pook.get(
+            make_esi_url(f"universe/systems/{solar_system.id}"),
+            reply=200,
+            response_json={
+                "constellation_id": solar_system.eve_constellation.id,
+                "name": "Enaluri",
+                "planets": [{"asteroid_belts": [belt_id], "planet_id": planet.id}],
+                "position": {
+                    "x": solar_system.position_x,
+                    "y": solar_system.position_y,
+                    "z": solar_system.position_z,
+                },
+                "security_status": solar_system.security_status,
+                "system_id": solar_system.id,
             },
         )
 
         # when
-        obj: EveMarketGroup
-        obj, created = EveMarketGroup.objects.get_or_create_esi(id=id)
+        obj: EveAsteroidBelt
+        obj, created = EveAsteroidBelt.objects.get_or_create_esi(id=belt_id)
 
         # then
         self.assertTrue(created)
-        self.assertEqual(obj.id, id)
-        self.assertEqual(obj.name, name)
-        self.assertEqual(obj.description, description)
+        self.assertEqual(obj.id, belt_id)
+        self.assertEqual(obj.name, obj_name)
+        self.assertEqual(obj.position_x, position["x"])
+        self.assertEqual(obj.position_y, position["y"])
+        self.assertEqual(obj.position_z, position["z"])
+        self.assertEqual(obj.eve_planet, planet)
 
 
-class TestEveMarketPriceManager(TestCase):
+class TestEveConstellation(TestCase):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
         cache.clear()
 
     @pook.on
-    def test_add_new_prices_from_esi_but_for_existing_types_only(self):
+    def test_create_from_esi(self):
         # given
-        et = EveTypeFactory()
-        adjusted_price = 306988.09
-        average_price = 306292.67
+        constellation_id = 20000785
+        region_id = 10000069
         pook.get(
-            make_esi_url("markets/prices"),
+            make_esi_url(f"universe/regions/{region_id}"),
             reply=200,
-            response_json=[
-                {
-                    "adjusted_price": adjusted_price,
-                    "average_price": average_price,
-                    "type_id": et.id,
-                },
-                {
-                    "adjusted_price": 123.45,
-                    "average_price": 678.90,
-                    "type_id": 420,
-                },
-            ],
+            response_json={
+                "constellations": [constellation_id],
+                "description": "...",
+                "name": "Black Rise",
+                "region_id": region_id,
+            },
+        )
+        position = PositionFactory()
+        pook.get(
+            make_esi_url(f"universe/constellations/{constellation_id}"),
+            reply=200,
+            response_json={
+                "constellation_id": constellation_id,
+                "name": "Ishaga",
+                "position": position,
+                "region_id": region_id,
+                "systems": [30045339],
+            },
         )
 
         # when
-        result = EveMarketPrice.objects.update_from_esi()
-
-        # then
-        self.assertEqual(result, 1)
-        self.assertEqual(EveMarketPrice.objects.count(), 1)
-        et.refresh_from_db()
-        self.assertEqual(float(et.market_price.adjusted_price), adjusted_price)
-        self.assertEqual(float(et.market_price.average_price), average_price)
-
-    @pook.on
-    def test_should_not_update_prices_which_are_not_stale_1(self):
-        # given
-        et = EveTypeFactory()
-        mp = EveMarketPriceFactory(eve_type=et)
-        pook.get(
-            make_esi_url("markets/prices"),
-            reply=200,
-            response_json=[
-                {
-                    "adjusted_price": 12,
-                    "average_price": 42,
-                    "type_id": et.id,
-                }
-            ],
+        obj: EveConstellation
+        obj, created = EveConstellation.objects.update_or_create_esi(
+            id=constellation_id
         )
 
-        # when
-        result = EveMarketPrice.objects.update_from_esi()
-
         # then
-        self.assertEqual(result, 0)
-        et.refresh_from_db()
-        self.assertEqual(float(et.market_price.adjusted_price), mp.adjusted_price)
-        self.assertEqual(float(et.market_price.average_price), mp.average_price)
-
-    @pook.on
-    def test_should_update_stale_prices(self):
-        # given
-        et = EveTypeFactory()
-        mocked_update_at = now() - dt.timedelta(minutes=65)
-        with patch("django.utils.timezone.now", Mock(return_value=mocked_update_at)):
-            EveMarketPriceFactory(eve_type=et)
-
-        adjusted_price = 306988.09
-        average_price = 306292.67
-        pook.get(
-            make_esi_url("markets/prices"),
-            reply=200,
-            response_json=[
-                {
-                    "adjusted_price": adjusted_price,
-                    "average_price": average_price,
-                    "type_id": et.id,
-                },
-                {"adjusted_price": 123.45, "average_price": 678.90, "type_id": 420},
-            ],
-        )
-
-        # when
-        result = EveMarketPrice.objects.update_from_esi(minutes_until_stale=60)
-
-        # then
-        self.assertEqual(result, 1)
-        et.refresh_from_db()
-        self.assertEqual(float(et.market_price.adjusted_price), adjusted_price)
-        self.assertEqual(float(et.market_price.average_price), average_price)
-
-    @pook.on
-    def test_should_remove_obsolete_prices(self):
-        # given
-        et_1 = EveTypeFactory()
-        mp_1 = EveMarketPriceFactory(eve_type=et_1)
-        et_2 = EveTypeFactory()
-        EveMarketPriceFactory(eve_type=et_2)
-        pook.get(
-            make_esi_url("markets/prices"),
-            reply=200,
-            response_json=[
-                {
-                    "adjusted_price": 12,
-                    "average_price": 42,
-                    "type_id": et_1.id,
-                }
-            ],
-        )
-
-        # when
-        result = EveMarketPrice.objects.update_from_esi()
-
-        # then
-        self.assertEqual(result, 0)
-        self.assertEqual(EveMarketPrice.objects.count(), 1)
-        et_1.refresh_from_db()
-        self.assertEqual(float(et_1.market_price.adjusted_price), mp_1.adjusted_price)
-        self.assertEqual(float(et_1.market_price.average_price), mp_1.average_price)
+        self.assertTrue(created)
+        self.assertEqual(obj.id, constellation_id)
+        self.assertEqual(obj.name, "Ishaga")
+        self.assertEqual(obj.position_x, position["x"])
+        self.assertEqual(obj.position_y, position["y"])
+        self.assertEqual(obj.position_z, position["z"])
+        self.assertEqual(obj.eve_region.id, region_id)
+        self.assertEqual(obj.eve_entity_category(), EveEntity.CATEGORY_CONSTELLATION)
+        self.assertEqual(obj.name, "Ishaga")
+        self.assertEqual(obj.position_x, position["x"])
+        self.assertEqual(obj.position_y, position["y"])
+        self.assertEqual(obj.position_z, position["z"])
+        self.assertEqual(obj.eve_region.id, region_id)
+        self.assertEqual(obj.eve_entity_category(), EveEntity.CATEGORY_CONSTELLATION)
 
 
 class TestEveMoon(TestCase):
@@ -731,4 +682,238 @@ class TestEveRegion(TestCase):
         self.assertTrue(EveRegion.objects.filter(id=id_1).exists())
 
 
-# --
+@patch(MODELS_PATH + ".EVEUNIVERSE_LOAD_DOGMAS", False)
+@patch(MODELS_PATH + ".EVEUNIVERSE_LOAD_MARKET_GROUPS", False)
+class TestEveStar(TestCase):
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cache.clear()
+
+    @pook.on
+    def test_create_from_esi(self):
+        # given
+        star_id = 40349466
+        age = 37075060962
+        et = EveTypeFactory()
+        luminosity = 0.02542000077664852
+        name = "Enaluri - Star"
+        radius = 590000000
+        solar_system = EveSolarSystemFactory()
+        spectral_class = "M6 V"
+        temperature = 2385
+        pook.get(
+            make_esi_url(f"universe/stars/{star_id}"),
+            reply=200,
+            response_json={
+                "age": age,
+                "luminosity": luminosity,
+                "name": name,
+                "radius": radius,
+                "solar_system_id": solar_system.id,
+                "spectral_class": spectral_class,
+                "temperature": temperature,
+                "type_id": et.id,
+            },
+        )
+
+        # when
+        obj: EveStar
+        obj, created = EveStar.objects.update_or_create_esi(id=star_id)
+
+        # then
+        self.assertTrue(created)
+        self.assertEqual(obj.age, age)
+        self.assertEqual(obj.eve_type, et)
+        self.assertEqual(obj.id, star_id)
+        self.assertEqual(obj.luminosity, luminosity)
+        self.assertEqual(obj.name, name)
+        self.assertEqual(obj.radius, radius)
+        self.assertEqual(obj.spectral_class, spectral_class)
+        self.assertEqual(obj.temperature, temperature)
+
+
+class TestEveStargate(TestCase):
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cache.clear()
+
+    @pook.on
+    def test_should_create_stargate_from_esi(self):
+        # given
+        stargate_id = 50016284
+        destination = EveStargateFactory()
+        et = EveTypeFactory()
+        name = "Stargate (Akidagi)"
+        position = PositionFactory()
+        solar_system = EveSolarSystemFactory()
+        pook.get(
+            make_esi_url(f"universe/stargates/{stargate_id}"),
+            reply=200,
+            response_json={
+                "destination": {
+                    "stargate_id": destination.id,
+                    "system_id": destination.eve_solar_system.id,
+                },
+                "name": name,
+                "position": position,
+                "stargate_id": stargate_id,
+                "system_id": solar_system.id,
+                "type_id": et.id,
+            },
+        )
+
+        # when
+        obj: EveStargate
+        obj, created = EveStargate.objects.get_or_create_esi(id=stargate_id)
+
+        # then
+        self.assertTrue(created)
+        self.assertEqual(obj.id, stargate_id)
+        self.assertEqual(obj.name, name)
+        self.assertEqual(obj.position_x, position["x"])
+        self.assertEqual(obj.position_y, position["y"])
+        self.assertEqual(obj.position_z, position["z"])
+        self.assertEqual(obj.eve_solar_system, solar_system)
+        self.assertEqual(obj.eve_type, et)
+        self.assertEqual(obj.destination_eve_stargate, destination)
+        self.assertEqual(obj.destination_eve_solar_system, destination.eve_solar_system)
+        self.assertEqual(obj.eve_entity_category(), "")
+
+    @pook.on
+    def test_should_create_stargate_from_esi_without_destination(self):
+        # given
+        stargate_id = 50016284
+        et = EveTypeFactory()
+        name = "Stargate (Akidagi)"
+        position = PositionFactory()
+        solar_system = EveSolarSystemFactory()
+        pook.get(
+            make_esi_url(f"universe/stargates/{stargate_id}"),
+            reply=200,
+            response_json={
+                "destination": {
+                    "stargate_id": 42,
+                    "system_id": 666,
+                },
+                "name": name,
+                "position": position,
+                "stargate_id": stargate_id,
+                "system_id": solar_system.id,
+                "type_id": et.id,
+            },
+        )
+
+        # when
+        obj: EveStargate
+        obj, created = EveStargate.objects.get_or_create_esi(id=stargate_id)
+
+        # then
+        self.assertTrue(created)
+        self.assertEqual(obj.id, stargate_id)
+        self.assertEqual(obj.name, name)
+        self.assertEqual(obj.position_x, position["x"])
+        self.assertEqual(obj.position_y, position["y"])
+        self.assertEqual(obj.position_z, position["z"])
+        self.assertEqual(obj.eve_solar_system, solar_system)
+        self.assertEqual(obj.eve_type, et)
+        self.assertIsNone(obj.destination_eve_stargate)
+        self.assertIsNone(obj.destination_eve_solar_system)
+        self.assertEqual(obj.eve_entity_category(), "")
+
+
+class TestEveStation(TestCase):
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cache.clear()
+
+    @pook.on
+    def test_create_from_esi(self):
+        # given
+        station_id = 60015068
+        et = EveTypeFactory()
+        er = EveRaceFactory()
+        es = EveSolarSystemFactory()
+        position = PositionFactory()
+        owner_id = 1000180
+        volume = 50000000
+        cost = 118744
+        reprocessing_efficiency = 0.5
+        reprocessing_stations_take = 0.025
+        name = "Enaluri V - State Protectorate Assembly Plant"
+        pook.get(
+            make_esi_url(f"universe/stations/{station_id}"),
+            reply=200,
+            response_json={
+                "max_dockable_ship_volume": volume,
+                "name": name,
+                "office_rental_cost": cost,
+                "owner": owner_id,
+                "position": position,
+                "race_id": er.id,
+                "reprocessing_efficiency": reprocessing_efficiency,
+                "reprocessing_stations_take": reprocessing_stations_take,
+                "services": [
+                    "bounty-missions",
+                    "courier-missions",
+                    "reprocessing-plant",
+                    "market",
+                    "repair-facilities",
+                    "factory",
+                    "fitting",
+                    "news",
+                    "insurance",
+                    "docking",
+                    "office-rental",
+                    "loyalty-point-store",
+                    "navy-offices",
+                    "security-offices",
+                ],
+                "station_id": station_id,
+                "system_id": es.id,
+                "type_id": et.id,
+            },
+        )
+
+        # when
+        obj: EveStation
+        obj, created = EveStation.objects.update_or_create_esi(id=station_id)
+
+        # then
+        self.assertTrue(created)
+        self.assertEqual(obj.id, station_id)
+        self.assertEqual(obj.name, name)
+        self.assertEqual(obj.max_dockable_ship_volume, volume)
+        self.assertEqual(obj.office_rental_cost, cost)
+        self.assertEqual(obj.owner_id, owner_id)
+        self.assertEqual(obj.position_x, position["x"])
+        self.assertEqual(obj.position_y, position["y"])
+        self.assertEqual(obj.position_z, position["z"])
+        self.assertEqual(obj.reprocessing_efficiency, reprocessing_efficiency)
+        self.assertEqual(obj.reprocessing_stations_take, reprocessing_stations_take)
+        self.assertEqual(obj.eve_race, er)
+        self.assertEqual(obj.eve_type, et)
+        self.assertEqual(obj.eve_solar_system, es)
+        self.assertEqual(obj.eve_entity_category(), EveEntity.CATEGORY_STATION)
+
+        self.assertSetEqual(
+            set(obj.services.values_list("name", flat=True)),
+            {
+                "bounty-missions",
+                "courier-missions",
+                "reprocessing-plant",
+                "market",
+                "repair-facilities",
+                "factory",
+                "fitting",
+                "news",
+                "insurance",
+                "docking",
+                "office-rental",
+                "loyalty-point-store",
+                "navy-offices",
+                "security-offices",
+            },
+        )
