@@ -6,6 +6,7 @@ This settings file contains everything needed for Alliance Auth projects to func
 It gets overwritten by the 'allianceauth update' command.
 If you wish to make changes, overload the setting in your project's settings file (local.py).
 """
+
 import os
 
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
@@ -30,6 +31,11 @@ STATICFILES_DIRS = [
 ]
 STATIC_ROOT = os.path.join(BASE_DIR, "static")
 
+SITE_URL = "https://www.example.com"
+
+# Django security
+CSRF_TRUSTED_ORIGINS = [SITE_URL]
+
 # Celery configuration
 BROKER_URL = "memory://localhost/"
 
@@ -53,4 +59,17 @@ INSTALLED_APPS = [
     "django.contrib.contenttypes",
     "django.contrib.sessions",
     "eveuniverse",
+    "esi",
 ]
+
+ESI_SSO_CLIENT_ID = "dummy"
+ESI_SSO_CLIENT_SECRET = "dummy"
+ESI_SSO_CALLBACK_URL = f"{SITE_URL}/sso/callback"
+ESI_USER_CONTACT_EMAIL = "info@example.com"
+
+CACHES = {
+    "default": {
+        "BACKEND": "django_redis.cache.RedisCache",
+        "LOCATION": "redis://127.0.0.1:6379/1",  # change the 1 here for the DB used
+    }
+}
