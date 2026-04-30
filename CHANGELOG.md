@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased] - yyyy-mm-dd
 
-## [2.0.0] - TBD
+## [2.0.0] - 2026-04-30
 
 This release is a major update with several breaking changes.
 
@@ -37,14 +37,16 @@ CACHES = {
 ### Changed
 
 - Breaking Change: Removed support for Django 3.2
-- Breaking Change: Removed support for Python 3.8, 3.9
+- Breaking Change: Removed support for Python 3.8
+- Breaking Change: Removed support for Python 3.8
 - Breaking Change: Removed `EsiClientStub`, testdata feature -> Use test factories instead
 - Breaking Change: Removed evemicros package
 - Added test factories for all types
 - Removed outdated command `eveuniverse_fix_section_flags`
 - Pinned swagger spec file
 - Modernized HTTP related
-- Added support for Django 5.2 & 6.0
+- Added support for Django 5.2
+- Added support for Django 6.0
 - Added support for django-esi 9
 - Added support fpr Python 3.13
 
