@@ -10061,14 +10061,13 @@
             },
             "DungeonID": {
                 "examples": [
-                    33
+                    12367
                 ],
                 "format": "int64",
                 "type": "integer",
                 "x-common-model": "true"
             },
             "Error": {
-                "additionalProperties": false,
                 "properties": {
                     "details": {
                         "description": "List of individual error details.",
@@ -10088,7 +10087,6 @@
                 "type": "object"
             },
             "ErrorDetail": {
-                "additionalProperties": false,
                 "properties": {
                     "location": {
                         "description": "Where the error occurred, e.g. 'body.items[3].tags' or 'path.thing-id'",
@@ -14400,7 +14398,7 @@
             "url": "https://developers.eveonline.com/license-agreement"
         },
         "termsOfService": "https://support.eveonline.com/hc/en-us/articles/8414770561948-EVE-Online-Terms-of-Service",
-        "title": "EVE Stroopwafel Ingestion (ESI) - tranquility",
+        "title": "EVE Spring Inebriation (ESI) - tranquility",
         "version": "2025-12-16"
     },
     "openapi": "3.1.0",
@@ -29128,6 +29126,7 @@
                 "tags": [
                     "Meta"
                 ],
+                "x-cache-age": 0,
                 "x-compatibility-date": "2025-09-26",
                 "x-rate-limit": {
                     "group": "meta",
@@ -29194,6 +29193,7 @@
                 "tags": [
                     "Meta"
                 ],
+                "x-cache-age": 0,
                 "x-compatibility-date": "2020-01-01",
                 "x-rate-limit": {
                     "group": "meta",
@@ -29260,6 +29260,7 @@
                 "tags": [
                     "Meta"
                 ],
+                "x-cache-age": 0,
                 "x-compatibility-date": "2025-11-06",
                 "x-rate-limit": {
                     "group": "meta",
@@ -29356,6 +29357,7 @@
                 "tags": [
                     "Routes"
                 ],
+                "x-cache-age": 0,
                 "x-compatibility-date": "2025-09-30",
                 "x-rate-limit": {
                     "group": "routes",
