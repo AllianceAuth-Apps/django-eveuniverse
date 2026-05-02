@@ -1,3 +1,6 @@
+-include .env
+export
+
 appname = aa-eveuniverse
 package = eveuniverse
 
@@ -29,7 +32,7 @@ compilemessages:
 	django-admin compilemessages -l zh_Hans
 
 coverage:
-	coverage run ../myauth/manage.py test $(package).tests --keepdb --failfast && coverage html && coverage report -m
+	coverage run $(MANAGE_PY_PATH) test $(package).tests --keepdb --failfast && coverage html && coverage report -m
 
 pylint:
 	pylint --load-plugins pylint_django $(package)
@@ -41,4 +44,4 @@ flake8:
 	flake8 $(package) --count
 
 graph_models:
-	python ../myauth/manage.py graph_models $(package) --arrow-shape normal -X EveUniverseBaseModel,EveUniverseEntityModel,EveUniverseInlineModel,EveUniverseSimpleEntityModel -o $(appname)_models.png
+	python $(MANAGE_PY_PATH) graph_models $(package) --arrow-shape normal -X EveUniverseBaseModel,EveUniverseEntityModel,EveUniverseInlineModel,EveUniverseSimpleEntityModel -o $(appname)_models.png

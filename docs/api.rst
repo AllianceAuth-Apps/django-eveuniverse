@@ -16,7 +16,7 @@ Models
 
 .. _api-manager-methods:
 
-Managers
+Model Managers
 ====================
 
 .. automodule:: eveuniverse.managers.entities
@@ -49,8 +49,6 @@ EveEntity tasks
 
 .. autofunction:: eveuniverse.tasks.create_eve_entities
 
-.. autofunction:: eveuniverse.tasks.update_stale_entities
-
 .. autofunction:: eveuniverse.tasks.update_unresolved_eve_entities
 
 Object loader tasks
@@ -73,6 +71,19 @@ Other tasks
 -------------------
 
 .. autofunction:: eveuniverse.tasks.update_market_prices
+
+Tools
+====================
+
+Testdata
+-------------------
+
+.. automodule:: eveuniverse.tools.testdata
+    :members:
+
+.. seealso::
+    Please also see :ref:`developer-testdata` on how to create test data for your app.
+
 
 Web APIs
 ========

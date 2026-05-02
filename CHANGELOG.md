@@ -7,7 +7,13 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased] - yyyy-mm-dd
 
-## [2.0.0] - 2026-04-30
+## [2.0.0a4] - 2026-05-03
+
+## Changed
+
+- Restored testdata feature
+
+## [2.0.0a3] - 2026-04-30
 
 This release is a major update with several breaking changes.
 
