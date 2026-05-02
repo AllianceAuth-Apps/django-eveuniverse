@@ -856,6 +856,3 @@ class TestDetermineEnabledSections(TestCase):
         self.assertSetEqual(
             result, {EveType.Section.DOGMAS, EveType.Section.TYPE_MATERIALS}
         )
-
-
-# -------

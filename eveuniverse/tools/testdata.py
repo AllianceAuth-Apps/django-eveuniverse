@@ -44,10 +44,13 @@ def create_testdata(spec: List[ModelSpec], filepath: Union[str, Path]) -> None:
     """
 
     _clear_database()
-    print("Database cleared.")
 
+    print("Initializing ESI client ...")
     _check_if_esi_is_available()
+
+    print("Loading data from ESI. This can take a while...")
     _load_data_per_spec(spec)
+
     _dump_all_data_into_file(Path(filepath))
 
 
@@ -58,7 +61,6 @@ def _clear_database():
 
 
 def _check_if_esi_is_available():
-    print("Initializing ESI client ...")
     if not is_esi_online():
         raise RuntimeError("ESI not online")
 
