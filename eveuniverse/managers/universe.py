@@ -10,12 +10,10 @@ from django.db import models
 from django.utils.timezone import now
 from esi.exceptions import HTTPClientError
 
-from eveuniverse import __title__
 from eveuniverse.app_settings import EVEUNIVERSE_BULK_METHODS_BATCH_SIZE
 from eveuniverse.providers import esi
-from eveuniverse.utils import LoggerAddTag
 
-logger = LoggerAddTag(logging.getLogger(__name__), __title__)
+logger = logging.getLogger(__name__)
 
 _FakeResponse = namedtuple("_FakeResponse", ["status_code"])
 

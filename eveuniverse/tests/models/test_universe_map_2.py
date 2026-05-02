@@ -816,6 +816,3 @@ class TestEveSolarSystems_SpaceTypes(TestCase):
                 self.assertIs(system.is_high_sec, tc.is_high_sec)
                 self.assertIs(system.is_low_sec, tc.is_low_sec)
                 self.assertIs(system.is_null_sec, tc.is_null_sec)
-
-
-# ---

@@ -992,9 +992,3 @@ class TestEveEntityQuerySet(TestCaseWithClearCache):
         character.refresh_from_db()
         self.assertEqual(character.name, "Alpha")
         self.assertEqual(character.category, EveEntity.CATEGORY_CHARACTER)
-
-
-# -----
-# -----
-# -----
-# -----

@@ -118,6 +118,3 @@ class TestEveUniverseBaseModel(TestCase):
         self.assertIsNone(
             EveUniverseBaseModel._eve_universe_meta_attr("undefined_param")
         )
-
-
-# --

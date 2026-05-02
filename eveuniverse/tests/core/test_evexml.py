@@ -150,5 +150,3 @@ class TestEveXml(TestCase):
         for tc in my_tests:
             with self.subTest(test=tc.name):
                 self.assertEqual(evexml.eve_link_to_url(tc.input), tc.want)
-
-    # --
