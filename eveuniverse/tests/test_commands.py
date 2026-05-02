@@ -480,6 +480,3 @@ class TestLoadTypes_EsiCheck(TestCaseWithClearCache):
         # then
         self.assertTrue(EveType.objects.filter(id=type_id).exists())
         self.assertFalse(mock_is_esi_online.called)
-
-
-# --

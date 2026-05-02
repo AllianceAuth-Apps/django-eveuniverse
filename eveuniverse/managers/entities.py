@@ -12,12 +12,11 @@ from django.db import models
 from django.db.utils import IntegrityError
 from esi.exceptions import HTTPClientError
 
-from eveuniverse import __title__
 from eveuniverse.app_settings import EVEUNIVERSE_BULK_METHODS_BATCH_SIZE
 from eveuniverse.constants import POST_UNIVERSE_NAMES_MAX_ITEMS
 from eveuniverse.helpers import EveEntityNameResolver
 from eveuniverse.providers import esi
-from eveuniverse.utils import LoggerAddTag, chunks
+from eveuniverse.utils import chunks
 
 from .universe import EveUniverseEntityModelManager
 
@@ -25,7 +24,7 @@ if TYPE_CHECKING:
     from eveuniverse.models import EveEntity
 
 
-logger = LoggerAddTag(logging.getLogger(__name__), __title__)
+logger = logging.getLogger(__name__)
 
 _ESI_INVALID_IDS = [1]  # Will never try to resolve these invalid IDs from ESI
 _ESI_MAX_NAMES_PER_REQUEST = 500
