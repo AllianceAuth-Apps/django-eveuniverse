@@ -10,13 +10,11 @@ from typing import Iterable, List, NamedTuple, Optional, Union
 
 from django.core.serializers.json import DjangoJSONEncoder
 
-from eveuniverse import __title__
 from eveuniverse.core.esitools import is_esi_online
 from eveuniverse.models import EveSolarSystem, EveStargate
 from eveuniverse.models.base import EveUniverseBaseModel
-from eveuniverse.utils import LoggerAddTag
 
-logger = LoggerAddTag(logging.getLogger(__name__), __title__)
+logger = logging.getLogger(__name__)
 
 
 class ModelSpec(NamedTuple):
@@ -46,7 +44,7 @@ def create_testdata(spec: List[ModelSpec], filepath: Union[str, Path]) -> None:
     """
 
     _clear_database()
-    print()
+    print("Database cleared.")
 
     _check_if_esi_is_available()
     _load_data_per_spec(spec)

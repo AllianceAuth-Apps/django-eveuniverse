@@ -10,7 +10,6 @@ from django.db.utils import OperationalError
 from django.utils.timezone import now
 from esi.exceptions import HTTPServerError
 
-from . import __title__
 from .app_settings import (
     EVEUNIVERSE_LOAD_TASKS_PRIORITY,
     EVEUNIVERSE_NAMES_EXPIRATION_TIME,
@@ -21,9 +20,9 @@ from .core.esitools import is_esi_online
 from .models import EveCategory, EveEntity, EveMarketPrice, EveType
 from .models.base import EveUniverseEntityModel, determine_effective_sections
 from .providers import esi
-from .utils import LoggerAddTag, chunks
+from .utils import chunks
 
-logger = LoggerAddTag(logging.getLogger(__name__), __title__)
+logger = logging.getLogger(__name__)
 # logging.getLogger("esi").setLevel(logging.INFO)
 
 

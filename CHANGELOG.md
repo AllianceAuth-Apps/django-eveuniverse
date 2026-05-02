@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ## Changed
 
 - Restored testdata feature
+- Removed logger tag
 
 ## [2.0.0a3] - 2026-04-30
 
