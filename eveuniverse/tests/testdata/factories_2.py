@@ -228,6 +228,8 @@ class AsteroidBeltTypeFactory(EveTypeFactory):
         id=EveGroupId.ASTEROID_BELT,
         name="Asteroid Belt",
     )
+    id = 15
+    name = "Asteroid Belt"
 
 
 class CitadelTypeFactory(EveTypeFactory):
@@ -258,6 +260,8 @@ class MoonTypeFactory(EveTypeFactory):
         id=EveGroupId.MOON,
         name="Moon",
     )
+    id = 14
+    name = "Moon"
 
 
 class StarTypeFactory(EveTypeFactory):
@@ -329,6 +333,7 @@ class EveMarketPriceFactory(
 ):
     class Meta:
         model = EveMarketPrice
+        django_get_or_create = ("eve_type",)
 
     adjusted_price = factory.fuzzy.FuzzyFloat(1, 100_000_000)
     average_price = factory.fuzzy.FuzzyFloat(1, 100_000_000)
