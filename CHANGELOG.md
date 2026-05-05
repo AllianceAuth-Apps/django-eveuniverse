@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased] - yyyy-mm-dd
 
+## [2.0.0a5] - 2026-05-05
+
+## Changed
+
+- Improved test factories
+
 ## [2.0.0a4] - 2026-05-03
 
 ## Changed
