@@ -6,7 +6,7 @@ from typing import Generic, TypeVar
 import factory
 import factory.fuzzy
 
-from eveuniverse.constants import EveCategoryId, EveGroupId, EveRegionId
+from eveuniverse.constants import EveCategoryId, EveGroupId, EveRegionId, EveTypeId
 from eveuniverse.models import (
     EveAsteroidBelt,
     EveBloodline,
@@ -15,6 +15,7 @@ from eveuniverse.models import (
     EveDogmaAttribute,
     EveDogmaEffect,
     EveEntity,
+    EveFaction,
     EveGraphic,
     EveGroup,
     EveMarketGroup,
@@ -73,18 +74,13 @@ class EveEntityFactory(
 
     id = factory.Sequence(lambda n: 90_900_001 + n)
     category = EveEntity.CATEGORY_CHARACTER
-    name = factory.Sequence(lambda n: f"character_name_{n}")
+    name = factory.LazyAttribute(lambda o: f"character_{o.id}")
 
 
 class EveEntityAllianceFactory(EveEntityFactory):
     id = factory.Sequence(lambda n: 99_900_001 + n)
-    name = factory.Sequence(lambda n: f"alliance_name_{n}")
+    name = factory.LazyAttribute(lambda o: f"alliance_{o.id}")
     category = EveEntity.CATEGORY_ALLIANCE
-
-
-class EveEntityUnresolvedFactory(EveEntityFactory):
-    name = ""
-    category = ""
 
 
 class EveEntityCharacterFactory(EveEntityFactory):
@@ -93,14 +89,19 @@ class EveEntityCharacterFactory(EveEntityFactory):
 
 class EveEntityCorporationFactory(EveEntityFactory):
     id = factory.Sequence(lambda n: 98_900_001 + n)
-    name = factory.Sequence(lambda n: f"corporation_name_{n}")
+    name = factory.LazyAttribute(lambda o: f"corporation_{o.id}")
     category = EveEntity.CATEGORY_CORPORATION
 
 
 class EveEntityFactionFactory(EveEntityFactory):
     id = factory.Sequence(lambda n: 509_001 + n)
-    name = factory.Sequence(lambda n: f"faction_name_{n}")
+    name = factory.LazyAttribute(lambda o: f"faction_{o.id}")
     category = EveEntity.CATEGORY_FACTION
+
+
+class EveEntityUnresolvedFactory(EveEntityFactory):
+    name = ""
+    category = ""
 
 
 class EveRaceFactory(
@@ -112,7 +113,7 @@ class EveRaceFactory(
 
     id = factory.Sequence(lambda n: 1 + n)
     alliance_id = factory.fuzzy.FuzzyInteger(590_001, 600_000)
-    name = factory.Faker("color")
+    name = factory.Faker("color_name")
     description = factory.Faker("paragraph")
 
 
@@ -228,8 +229,42 @@ class AsteroidBeltTypeFactory(EveTypeFactory):
         id=EveGroupId.ASTEROID_BELT,
         name="Asteroid Belt",
     )
-    id = 15
+    id = EveTypeId.ASTEROID_BELT
     name = "Asteroid Belt"
+
+
+class AllianceTypeFactory(EveTypeFactory):
+    eve_group = factory.SubFactory(
+        EveGroupFactory,
+        eve_category__id=EveCategoryId.OWNER,
+        eve_category__name="Owner",
+        id=EveGroupId.ALLIANCE,
+        name="Alliance",
+    )
+    id = 16159
+    name = "Alliance"
+
+
+class CharacterTypeFactory(EveTypeFactory):
+    eve_group = factory.SubFactory(
+        EveGroupFactory,
+        eve_category__id=EveCategoryId.OWNER,
+        eve_category__name="Owner",
+        id=EveGroupId.CHARACTER,
+        name="Character",
+    )
+
+
+class CorporationTypeFactory(EveTypeFactory):
+    eve_group = factory.SubFactory(
+        EveGroupFactory,
+        eve_category__id=EveCategoryId.OWNER,
+        eve_category__name="Owner",
+        id=EveGroupId.CORPORATION,
+        name="Corporation",
+    )
+    id = 2
+    name = "Corporation"
 
 
 class CitadelTypeFactory(EveTypeFactory):
@@ -260,8 +295,34 @@ class MoonTypeFactory(EveTypeFactory):
         id=EveGroupId.MOON,
         name="Moon",
     )
-    id = 14
+    id = EveTypeId.MOON
     name = "Moon"
+
+
+class PlanetTypeFactory(EveTypeFactory):
+    class Params:
+        planet_type = "Barren"
+
+    eve_group = factory.SubFactory(
+        EveGroupFactory,
+        eve_category__id=EveCategoryId.CELESTIAL,
+        eve_category__name="Celestial",
+        id=EveGroupId.PLANET,
+        name="Planet",
+    )
+    name = factory.LazyAttribute(lambda o: f"Planet ({o.planet_type})")
+
+
+class SolarSystemTypeFactory(EveTypeFactory):
+    eve_group = factory.SubFactory(
+        EveGroupFactory,
+        eve_category__id=EveCategoryId.CELESTIAL,
+        eve_category__name="Celestial",
+        id=EveGroupId.SOLAR_SYSTEM,
+        name="Solar System",
+    )
+    id = EveTypeId.SOLAR_SYSTEM
+    name = "Solar System"
 
 
 class StarTypeFactory(EveTypeFactory):
@@ -289,23 +350,9 @@ class SKINTypeFactory(EveTypeFactory):
         EveGroupFactory,
         eve_category__id=EveCategoryId.SKIN,
         eve_category__name="SKINs",
-        id=1950,
+        id=EveGroupId.PERMANENT_SKIN,
         name="Permanent SKIN",
     )
-
-
-class PlanetTypeFactory(EveTypeFactory):
-    class Params:
-        planet_type = "Barren"
-
-    eve_group = factory.SubFactory(
-        EveGroupFactory,
-        eve_category__id=EveCategoryId.CELESTIAL,
-        eve_category__name="Celestial",
-        id=EveGroupId.PLANET,
-        name="Planet",
-    )
-    name = factory.LazyAttribute(lambda o: f"Planet ({o.planet_type})")
 
 
 class ShipTypeFactory(EveTypeFactory):
@@ -333,7 +380,6 @@ class EveMarketPriceFactory(
 ):
     class Meta:
         model = EveMarketPrice
-        django_get_or_create = ("eve_type",)
 
     adjusted_price = factory.fuzzy.FuzzyFloat(1, 100_000_000)
     average_price = factory.fuzzy.FuzzyFloat(1, 100_000_000)
@@ -554,3 +600,23 @@ class EveBloodlineFactory(
     memory = factory.fuzzy.FuzzyInteger(17, 32)
     perception = factory.fuzzy.FuzzyInteger(17, 32)
     willpower = factory.fuzzy.FuzzyInteger(17, 32)
+
+
+class EveFactionFactory(
+    factory.django.DjangoModelFactory, metaclass=BaseMetaFactory[EveFaction]
+):
+    class Meta:
+        model = EveFaction
+        django_get_or_create = ("id",)
+
+    id = factory.Sequence(lambda n: 509_001 + n)
+    name = factory.Sequence(lambda n: f"faction{n}")
+
+    description = factory.Faker("paragraph")
+    corporation_id = factory.fuzzy.FuzzyInteger(1_000_000, 1_999_999)
+    eve_solar_system = factory.SubFactory(EveSolarSystemFactory)
+    is_unique = True
+    militia_corporation_id = factory.fuzzy.FuzzyInteger(1_000_000, 1_999_999)
+    size_factor = factory.fuzzy.FuzzyInteger(1, 5)
+    station_count = factory.fuzzy.FuzzyInteger(1, 100)
+    station_system_count = factory.fuzzy.FuzzyInteger(1, 100)
