@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import logging
-import warnings
 from collections import defaultdict
 from http import HTTPStatus
 from typing import TYPE_CHECKING, Any, Iterable, Optional, Set, Tuple
@@ -11,6 +10,7 @@ from typing import TYPE_CHECKING, Any, Iterable, Optional, Set, Tuple
 from django.db import models
 from django.db.utils import IntegrityError
 from esi.exceptions import HTTPClientError
+from typing_extensions import deprecated
 
 from eveuniverse.app_settings import EVEUNIVERSE_BULK_METHODS_BATCH_SIZE
 from eveuniverse.constants import POST_UNIVERSE_NAMES_MAX_ITEMS
@@ -52,18 +52,19 @@ class EveEntityManagerBase(EveUniverseEntityModelManager):
 
     _MAX_DEPTH = 5  # max recursion depth when resolving IDs
 
+    @deprecated("Replaced by `bulk_resolve_ids()`")
     def bulk_create_esi(self, ids: Iterable[int]) -> int:
         """Resolve given IDs from ESI and update or create corresponding objects.
-
-        `DEPRECATED` - please use ``bulk_resolve_ids()`` instead
 
         Args:
             ids: List of valid EveEntity IDs
 
         Returns:
             Count of updated entities
+
+        .. deprecated:: 1.5.0
+           Use :func:`bulk_resolve_ids` instead.
         """
-        warnings.warn("Please use bulk_resolve_ids() instead.", DeprecationWarning)
         return self.bulk_resolve_ids(ids)
 
     def bulk_resolve_ids(self, ids: Iterable[int]) -> int:

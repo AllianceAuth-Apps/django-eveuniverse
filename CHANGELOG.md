@@ -7,11 +7,19 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased] - yyyy-mm-dd
 
+## [2.0.0a6] - 2026-05-16
+
+## Changed
+
+- Restored old test factories and marked them as deprecated.
+- Added more factory boy test factories
+
 ## [2.0.0a5] - 2026-05-05
 
 ## Changed
 
 - Improved test factories
+- Removed old style test factories. All testdata factories are now based on factory boy.
 
 ## [2.0.0a4] - 2026-05-03
 
