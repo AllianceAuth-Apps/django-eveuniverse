@@ -53,7 +53,11 @@ class EveBloodline(EveUniverseEntityModel):
         related_name="eve_bloodlines",
     )
     eve_ship_type = models.ForeignKey(
-        "EveType", on_delete=models.CASCADE, related_name="eve_bloodlines"
+        "EveType",
+        on_delete=models.SET_DEFAULT,
+        default=None,
+        null=True,
+        related_name="eve_bloodlines",
     )
     charisma = models.PositiveIntegerField()
     corporation_id = models.PositiveIntegerField()

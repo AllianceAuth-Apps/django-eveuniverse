@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased] - yyyy-mm-dd
 
+## [2.0.0a7] - 2026-05-20
+
+## Changed
+
+- Field EveBloodlines.ship_types is now nullable
+
+## Fixed
+
+- Added workaround for bloodlines related schema issues (#27)
+
 ## [2.0.0a6] - 2026-05-16
 
 ## Changed
