@@ -12870,7 +12870,6 @@
                         "name",
                         "description",
                         "race_id",
-                        "ship_type_id",
                         "corporation_id",
                         "perception",
                         "willpower",
