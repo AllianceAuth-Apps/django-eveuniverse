@@ -7,6 +7,55 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased] - yyyy-mm-dd
 
+## [2.0.0] - 2026-05-21
+
+This release is a major update with several breaking changes.
+
+- Switched to OpenAPI client from django-esi to replace deprecated Swagger client
+- New minimum requirements: Python 3.10 & Django 4.2 & django-esi 8
+- Now requires django-redis for caching
+
+### Update notes
+
+django-eveuniverse was initially developed to support community apps for Alliance Auth.
+
+If you are using it for a non-Alliance Auth project please note that the OpenAPI client
+in django-esi now requires django-redis as cache backend for Django.
+
+It can be configured like this in the Django's settings file:
+
+```python
+CACHES = {
+    "default": {
+        "BACKEND": "django_redis.cache.RedisCache",
+        "LOCATION": "redis://127.0.0.1:6379/1",
+    }
+}
+```
+
+### Changed
+
+- BREAKING CHANGE: Removed support for Django 3.2
+- BREAKING CHANGE: Removed support for Python 3.8
+- BREAKING CHANGE: Removed support for Python 3.8
+- BREAKING CHANGE: Removed `EsiClientStub`
+- BREAKING CHANGE: Removed evemicros package
+- Added support for Django 5.2
+- Added support for Django 6.0
+- Added support for django-esi 9
+- Added support fpr Python 3.13
+- Field EveBloodlines.ship_types is now nullable
+- Removed logger tag
+- Removed outdated command `eveuniverse_fix_section_flags`
+- Pinned ESI spec file
+- Added test factories for all types
+- Modernized test suite
+
+### Fixed
+
+- Does not fetch moons for EveSolarSystem when section is enabled
+- Added workaround for bloodlines related schema issues (#27)
+
 ## [2.0.0a7] - 2026-05-20
 
 ## Changed
