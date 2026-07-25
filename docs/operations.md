@@ -44,7 +44,7 @@ celery_app.conf.ONCE = {
 }
 ```
 
-Or you can use one of the backends provided with celery_once. See [here](https://github.com/cameronmaske/celery-once#backends) for more information.
+Or you can use one of the backends provided with celery_once. See [celery-once](https://github.com/cameronmaske/celery-once#backends) for more information.
 
 ```{note}
 **Note on celery worker setup**
@@ -66,7 +66,7 @@ Finally restart your Django instance so your changes become effective.
 
 ```{eval-rst}
 .. hint::
-    Before updating please always check the `Change Log <https://gitlab.com/ErikKalkoken/django-eveuniverse/-/blob/master/CHANGELOG.md>`_ for any special instructions on updating or important changes that might affect your project.
+    Before updating please always check the release notes for any special instructions on updating or important changes that might affect your project.
 ```
 
 To update your installation first install the new version:
