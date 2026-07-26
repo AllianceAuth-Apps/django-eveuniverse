@@ -22,6 +22,7 @@ from eveuniverse.tests.testdata.factories_2 import (
     EveCategoryFactory,
     EveDogmaAttributeFactory,
     EveDogmaEffectFactory,
+    EveTypeFactory,
     make_esi_url,
 )
 
@@ -856,3 +857,19 @@ class TestDetermineEnabledSections(TestCase):
         self.assertSetEqual(
             result, {EveType.Section.DOGMAS, EveType.Section.TYPE_MATERIALS}
         )
+
+
+class TestEveUniverseEntityModelQuerySet_FilterEnabledSections(TestCase):
+    def test_should_filter_correctly(self):
+        # given
+        EveTypeFactory()
+        et_1 = EveTypeFactory(enabled_sections=1)  # dogmas
+        EveTypeFactory(enabled_sections=4)  # market groups
+        et_2 = EveTypeFactory(enabled_sections=5)  # dogmas & market groups
+        EveTypeFactory(enabled_sections=8)  # type materials
+
+        # when
+        got = EveType.objects.filter_enabled_sections([EveType.Section.DOGMAS])
+
+        # then
+        self.assertCountEqual(got, [et_1, et_2])

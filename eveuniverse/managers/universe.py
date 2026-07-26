@@ -18,7 +18,19 @@ logger = logging.getLogger(__name__)
 _FakeResponse = namedtuple("_FakeResponse", ["status_code"])
 
 
-class EveUniverseEntityModelManager(models.Manager):
+class EveUniverseEntityModelQuerySet(models.QuerySet):
+    def filter_enabled_sections(
+        self, enabled_sections: Iterable[str]
+    ) -> models.QuerySet:
+        params = {
+            "enabled_sections": getattr(self.model.enabled_sections, section)
+            for section in enabled_sections
+            if str(section) in self.model.Section.values()
+        }
+        return self.filter(**params)
+
+
+class EveUniverseEntityModelManagerBase(models.Manager):
     """Custom manager adding the ability to fetch objects from ESI."""
 
     def get_or_create_esi(
@@ -53,8 +65,7 @@ class EveUniverseEntityModelManager(models.Manager):
         id = int(id)
         effective_sections = determine_effective_sections(enabled_sections)
         try:
-            enabled_sections_filter = self._enabled_sections_filter(effective_sections)
-            obj = self.filter(**enabled_sections_filter).get(id=id)
+            obj = self.filter_enabled_sections(effective_sections).get(id=id)
             return obj, False
         except self.model.DoesNotExist:
             return self.update_or_create_esi(
@@ -64,13 +75,6 @@ class EveUniverseEntityModelManager(models.Manager):
                 enabled_sections=effective_sections,
                 task_priority=task_priority,
             )
-
-    def _enabled_sections_filter(self, enabled_sections: Iterable[str]) -> dict:
-        return {
-            "enabled_sections": getattr(self.model.enabled_sections, section)
-            for section in enabled_sections
-            if str(section) in self.model.Section.values()
-        }
 
     def update_or_create_esi(
         self,
@@ -300,10 +304,9 @@ class EveUniverseEntityModelManager(models.Manager):
 
         ids = set(map(int, ids))
         effective_sections = determine_effective_sections(enabled_sections)
-        enabled_sections_filter = self._enabled_sections_filter(effective_sections)
         existing_ids = set(
             self.filter(id__in=ids)
-            .filter(**enabled_sections_filter)
+            .filter_enabled_sections(effective_sections)
             .values_list("id", flat=True)
         )
         for id in ids.difference(existing_ids):
@@ -316,6 +319,11 @@ class EveUniverseEntityModelManager(models.Manager):
             )
 
         return self.filter(id__in=ids)
+
+
+EveUniverseEntityModelManager = EveUniverseEntityModelManagerBase.from_queryset(
+    EveUniverseEntityModelQuerySet
+)
 
 
 class EvePlanetManager(EveUniverseEntityModelManager):
