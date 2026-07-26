@@ -339,8 +339,11 @@ class EveUniverseEntityModel(EveUniverseBaseModel):
         return self.name
 
     # pylint: disable = no-member
-    def set_updated_sections(self, enabled_sections: Optional[Set[str]]) -> bool:
-        """Set updated sections for this object."""
+    def update_enabled_sections(self, enabled_sections: Optional[Set[str]]) -> bool:
+        """Update `enable_ sections` field from enum values.
+
+        No-op when the field does not exist.
+        """
         if not enabled_sections or not hasattr(self, "enabled_sections"):
             return False
 
@@ -357,6 +360,17 @@ class EveUniverseEntityModel(EveUniverseBaseModel):
 
         self.save()
         return True
+
+    def enabled_sections_values(self) -> Set[_SectionBase]:
+        """Return value of `enabled_sections' field as enum values.
+
+        Returns empty when the field does not exist.
+        """
+        if not hasattr(self, "enabled_sections"):
+            return set()
+
+        values = {self.Section(flag[0]) for flag in self.enabled_sections if flag[1]}
+        return values
 
     @classmethod
     def _update_or_create_children(

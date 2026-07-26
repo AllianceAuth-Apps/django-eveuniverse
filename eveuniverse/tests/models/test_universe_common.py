@@ -22,6 +22,7 @@ from eveuniverse.tests.testdata.factories_2 import (
     EveCategoryFactory,
     EveDogmaAttributeFactory,
     EveDogmaEffectFactory,
+    EveGroupFactory,
     EveTypeFactory,
     make_esi_url,
 )
@@ -873,3 +874,35 @@ class TestEveUniverseEntityModelQuerySet_FilterEnabledSections(TestCase):
 
         # then
         self.assertCountEqual(got, [et_1, et_2])
+
+
+class TestEveUniverseEntityModel_EnabledSectionsValues(TestCase):
+    def test_should_return_as_values(self):
+        # given
+        cases = [
+            (0, set()),
+            (1, {EveType.Section.DOGMAS}),
+            (2, {EveType.Section.GRAPHICS}),
+            (3, {EveType.Section.DOGMAS, EveType.Section.GRAPHICS}),
+        ]
+        for raw_value, want in cases:
+            et = EveTypeFactory(enabled_sections=raw_value)
+            msg = f"raw value: {raw_value}"
+            self.assertSetEqual(et.enabled_sections_values(), want, msg=msg)
+
+    def test_should_return_empty_when_property_does_not_exist(self):
+        eg = EveGroupFactory()
+        self.assertSetEqual(eg.enabled_sections_values(), set())
+
+
+class TestEveUniverseEntityModel_UpdateEnabledSections(TestCase):
+    def test_should_set_correctly(self):
+        # given
+        et = EveTypeFactory()
+
+        # when
+        et.update_enabled_sections([EveType.Section.DOGMAS])
+
+        # then
+        et.refresh_from_db()
+        self.assertSetEqual(et.enabled_sections_values(), {EveType.Section.DOGMAS})

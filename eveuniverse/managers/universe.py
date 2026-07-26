@@ -2,7 +2,6 @@
 
 import datetime as dt
 import logging
-from collections import namedtuple
 from http import HTTPStatus
 from typing import Any, Dict, Iterable, List, Optional, Set, Tuple
 
@@ -14,8 +13,6 @@ from eveuniverse.app_settings import EVEUNIVERSE_BULK_METHODS_BATCH_SIZE
 from eveuniverse.providers import esi
 
 logger = logging.getLogger(__name__)
-
-_FakeResponse = namedtuple("_FakeResponse", ["status_code"])
 
 
 class EveUniverseEntityModelQuerySet(models.QuerySet):
@@ -138,7 +135,7 @@ class EveUniverseEntityModelManagerBase(models.Manager):
             else:
                 updated_sections = effective_sections
 
-            obj.set_updated_sections(updated_sections)
+            obj.update_enabled_sections(updated_sections)
 
         else:
             raise HTTPClientError(
