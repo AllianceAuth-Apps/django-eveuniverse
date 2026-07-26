@@ -135,7 +135,7 @@ class EveUniverseEntityModelManagerBase(models.Manager):
             else:
                 updated_sections = effective_sections
 
-            obj.update_enabled_sections(updated_sections)
+            obj.add_enabled_sections(updated_sections)
 
         else:
             raise HTTPClientError(

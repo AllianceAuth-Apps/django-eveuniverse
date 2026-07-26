@@ -339,8 +339,8 @@ class EveUniverseEntityModel(EveUniverseBaseModel):
         return self.name
 
     # pylint: disable = no-member
-    def update_enabled_sections(self, enabled_sections: Optional[Set[str]]) -> bool:
-        """Update `enable_ sections` field from enum values.
+    def add_enabled_sections(self, enabled_sections: Optional[Set[str]]) -> bool:
+        """Add to `enable_ sections` field from enum values.
 
         No-op when the field does not exist.
         """
@@ -349,8 +349,9 @@ class EveUniverseEntityModel(EveUniverseBaseModel):
 
         updated_sections = False
         old_value = self.enabled_sections.mask
+        valid_values = set(self.Section.values())
         for section in enabled_sections:
-            if str(section) in self.Section.values():
+            if str(section) in valid_values:
                 setattr(self.enabled_sections, section, True)
                 updated_sections = True
 
