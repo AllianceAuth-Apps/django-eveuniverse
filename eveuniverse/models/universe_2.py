@@ -9,7 +9,6 @@ from collections import namedtuple
 from http import HTTPStatus
 from typing import Iterable, List, Optional, Set
 
-from bitfield import BitField
 from django.db import models
 from django.utils.functional import cached_property
 from esi.exceptions import HTTPClientError
@@ -149,8 +148,8 @@ class EvePlanet(EveUniverseEntityModel):
     position_z = models.FloatField(
         null=True, default=None, blank=True, help_text="z position in the solar system"
     )
-    enabled_sections = BitField(
-        flags=tuple(Section.values()),
+    enabled_sections = models.BigIntegerField(
+        default=0,
         help_text=(
             "Flags for loadable sections. True if instance was loaded with section."
         ),  # no index, because MySQL does not support it for bitwise operations
@@ -243,8 +242,8 @@ class EveSolarSystem(EveUniverseEntityModel):
         null=True, default=None, blank=True, help_text="z position in the solar system"
     )
     security_status = models.FloatField()
-    enabled_sections = BitField(
-        flags=tuple(Section.values()),
+    enabled_sections = models.BigIntegerField(
+        default=0,
         help_text=(
             "Flags for loadable sections. True if instance was loaded with section."
         ),  # no index, because MySQL does not support it for bitwise operations

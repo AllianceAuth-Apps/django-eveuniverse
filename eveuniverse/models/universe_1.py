@@ -5,7 +5,6 @@
 import enum
 from typing import Optional, Set
 
-from bitfield import BitField
 from django.contrib.staticfiles.storage import staticfiles_storage
 from django.db import models
 
@@ -447,8 +446,8 @@ class EveType(EveUniverseEntityModel):
     radius = models.FloatField(default=None, null=True)
     published = models.BooleanField()
     volume = models.FloatField(default=None, null=True)
-    enabled_sections = BitField(
-        flags=tuple(Section.values()),
+    enabled_sections = models.BigIntegerField(
+        default=0,
         help_text=(
             "Flags for loadable sections. True if instance was loaded with section."
         ),  # no index, because MySQL does not support it for bitwise operations

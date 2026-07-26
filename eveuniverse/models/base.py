@@ -48,6 +48,10 @@ class _SectionBase(str, enum.Enum):
     def __str__(self) -> str:
         return self.value
 
+    def flag(self) -> int:
+        """Return flag value for an enum."""
+        return 1 << list(self.__class__).index(self)
+
 
 class EveUniverseBaseModel(models.Model):
     """Base class for all Eve Universe Models.
@@ -308,38 +312,56 @@ class EveUniverseEntityModel(EveUniverseBaseModel):
 
     # pylint: disable = no-member
     def add_enabled_sections(self, enabled_sections: Optional[Set[str]]) -> bool:
-        """Add to `enable_ sections` field from enum values.
+        """Add to `enable_sections` field from enum values
+        and report whether it changed.
 
         No-op when the field does not exist.
         """
-        if not enabled_sections or not hasattr(self, "enabled_sections"):
+        mask = self.calc_section_mask(enabled_sections)
+        if not mask:
             return False
 
-        updated_sections = False
-        old_value = self.enabled_sections.mask
-        valid_values = set(self.Section.values())
-        for section in enabled_sections:
-            if str(section) in valid_values:
-                setattr(self.enabled_sections, section, True)
-                updated_sections = True
+        old_value = self.enabled_sections
+        self.enabled_sections |= mask
 
-        has_changed = self.enabled_sections.mask != old_value
-        if not updated_sections or not has_changed:
+        if self.enabled_sections == old_value:
             return False
 
-        self.save()
+        self.save(update_fields=["enabled_sections"])
         return True
 
-    def enabled_sections_values(self) -> Set[_SectionBase]:
-        """Return value of `enabled_sections' field as enum values.
+    @property
+    def enabled_sections_set(self) -> Set[_SectionBase]:
+        """Return enabled section flags as set of enum values.
 
-        Returns empty when the field does not exist.
+        Return empty if the model does not support sections.
         """
         if not hasattr(self, "enabled_sections"):
             return set()
 
-        values = {self.Section(flag[0]) for flag in self.enabled_sections if flag[1]}
-        return values
+        sections = {s for s in self.Section if self.enabled_sections & s.flag()}
+        return sections
+
+    @classmethod
+    def calc_section_mask(cls, enabled_sections: Optional[Set[str]]) -> int:
+        """Return the calculated section mask for enabled_sections.
+
+        The mask can be used to perform bitmask operations against
+        the `enabled_sections` field.
+
+        Invalid sections will be ignored.
+        Return 0 if the model does not support sections.
+        """
+        if not enabled_sections or not hasattr(cls, "enabled_sections"):
+            return 0
+
+        valid_values = set(cls.Section.values())
+        valid_enabled = valid_values.intersection(enabled_sections)
+        mask = 0
+        for s in valid_enabled:
+            mask |= cls.Section(s).flag()
+
+        return mask
 
     @classmethod
     def _update_or_create_children(

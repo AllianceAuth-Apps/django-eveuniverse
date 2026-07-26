@@ -6,6 +6,7 @@ from http import HTTPStatus
 from typing import Any, Dict, Iterable, List, Optional, Set, Tuple
 
 from django.db import models
+from django.db.models import F
 from django.utils.timezone import now
 from esi.exceptions import HTTPClientError
 
@@ -16,15 +17,22 @@ logger = logging.getLogger(__name__)
 
 
 class EveUniverseEntityModelQuerySet(models.QuerySet):
+    """QuerySets for EveUniverseEntityModel."""
+
     def filter_enabled_sections(
         self, enabled_sections: Iterable[str]
     ) -> models.QuerySet:
-        params = {
-            "enabled_sections": getattr(self.model.enabled_sections, section)
-            for section in enabled_sections
-            if str(section) in self.model.Section.values()
-        }
-        return self.filter(**params)
+        """Return a filter that matches all provided sections.
+
+        Sections not valid for the respective model are ignored.
+        If the model does not support sections the filter matches all.
+        """
+        mask = self.model.calc_section_mask(enabled_sections)
+        if not mask:
+            return self
+
+        qs = self.annotate(enabled_sections_match=F("enabled_sections").bitand(mask))
+        return qs.filter(enabled_sections_match=mask)
 
 
 class EveUniverseEntityModelManagerBase(models.Manager):
@@ -438,6 +446,7 @@ class EveStargateManager(EveUniverseEntityModelManager):
         enabled_sections: Optional[Iterable[str]] = None,
         task_priority: Optional[int] = None,
     ) -> Tuple[Any, bool]:
+        # pylint: disable=unused-argument
         """updates or creates an EveStargate object by fetching it from ESI (blocking).
         Will always get/create parent objects
 
@@ -480,6 +489,7 @@ class EveTypeManager(EveUniverseEntityModelManager):
         enabled_sections: Optional[Iterable[str]] = None,
         task_priority: Optional[int] = None,
     ) -> Tuple[Any, bool]:
+        # pylint: disable=missing-function-docstring
         from eveuniverse.models.base import determine_effective_sections
 
         effective_sections = determine_effective_sections(enabled_sections)
