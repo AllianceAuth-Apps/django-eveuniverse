@@ -58,41 +58,6 @@ class EveUniverseBaseModel(models.Model):
     class Meta:
         abstract = True
 
-    def __repr__(self) -> str:
-        """General purpose __repr__ that works for all model classes"""
-        fields = sorted(
-            [
-                f
-                for f in self._meta.get_fields()
-                if isinstance(f, models.Field) and f.name != "last_updated"
-            ],
-            key=lambda x: x.name,
-        )
-        fields_2 = []
-        for field in fields:
-            if field.many_to_one or field.one_to_one:
-                name = f"{field.name}_id"
-                value = getattr(self, name)
-            elif field.many_to_many:
-                name = field.name
-                value = ", ".join(
-                    sorted([str(x) for x in getattr(self, field.name).all()])
-                )
-            else:
-                name = field.name
-                value = getattr(self, field.name)
-
-            if isinstance(value, str):
-                if isinstance(field, models.TextField) and len(value) > 32:
-                    value = f"{value[:32]}..."
-                text = f"{name}='{value}'"
-            else:
-                text = f"{name}={value}"
-
-            fields_2.append(text)
-
-        return f"{self.__class__.__name__}({', '.join(fields_2)})"
-
     @classmethod
     def all_models(cls) -> List[Dict[Any, int]]:
         """Return a list of all Eve Universe model classes sorted by load order."""
@@ -337,6 +302,9 @@ class EveUniverseEntityModel(EveUniverseBaseModel):
 
     def __str__(self) -> str:
         return self.name
+
+    def __repr__(self):
+        return f'{self.__class__.__name__}(id={self.id}, name="{self.name}")'
 
     # pylint: disable = no-member
     def add_enabled_sections(self, enabled_sections: Optional[Set[str]]) -> bool:
