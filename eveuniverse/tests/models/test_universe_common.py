@@ -862,7 +862,7 @@ class TestDetermineEnabledSections(TestCase):
 
 
 class TestEveUniverseEntityModelQuerySet_FilterEnabledSections(TestCase):
-    def test_should_match_one_flag(self):
+    def test_should_match_one_section_with_enum(self):
         # given
         self.maxDiff = None
         EveTypeFactory(id=101)
@@ -877,19 +877,47 @@ class TestEveUniverseEntityModelQuerySet_FilterEnabledSections(TestCase):
         # then
         self.assertCountEqual(got, [et_2, et_4])
 
-    def test_should_match_any_of_multiple_flags(self):
+    def test_should_match_one_section_with_string(self):
+        # given
+        self.maxDiff = None
+        EveTypeFactory(id=101)
+        et_2 = EveTypeFactory(id=102, enabled_sections=1)  # dogmas
+        EveTypeFactory(id=103, enabled_sections=4)  # market groups
+        et_4 = EveTypeFactory(id=104, enabled_sections=5)  # dogmas & market groups
+        EveTypeFactory(id=105, enabled_sections=8)  # type materials
+
+        # when
+        got = EveType.objects.filter_enabled_sections(["dogmas"])
+
+        # then
+        self.assertCountEqual(got, [et_2, et_4])
+
+    def test_should_ignore_invalid_sections(self):
+        # given
+        self.maxDiff = None
+        EveTypeFactory(id=101)
+        et_2 = EveTypeFactory(id=102, enabled_sections=1)  # dogmas
+        EveTypeFactory(id=103, enabled_sections=4)  # market groups
+        et_4 = EveTypeFactory(id=104, enabled_sections=5)  # dogmas & market groups
+        EveTypeFactory(id=105, enabled_sections=8)  # type materials
+
+        # when
+        got = EveType.objects.filter_enabled_sections(["dogmas", "invalid"])
+
+        # then
+        self.assertCountEqual(got, [et_2, et_4])
+
+    def test_should_match_all_sections(self):
         # given
         self.maxDiff = None
         EveTypeFactory(id=101)
         et_2 = EveTypeFactory(id=102, enabled_sections=5)  # dogmas & market groups
-        et_3 = EveTypeFactory(id=103, enabled_sections=4)  # market groups
+        EveTypeFactory(id=103, enabled_sections=4)  # market groups
         et_4 = EveTypeFactory(
             id=104, enabled_sections=13
         )  # dogmas & market groups & type materials
         EveTypeFactory(id=105, enabled_sections=8)  # type materials
-        et_6 = EveTypeFactory(
-            id=106, enabled_sections=12
-        )  # type materials + market groups
+        EveTypeFactory(id=106, enabled_sections=12)  # type materials + market groups
 
         # when
         got = EveType.objects.filter_enabled_sections(
@@ -897,9 +925,22 @@ class TestEveUniverseEntityModelQuerySet_FilterEnabledSections(TestCase):
         )
 
         # then
-        self.assertCountEqual(got, [et_2, et_3, et_4, et_6])
+        self.assertCountEqual(got, [et_2, et_4])
 
-    def test_should_return_empty_when_field_is_missing(self):
+    def test_should_match_all_no_sections_provided(self):
+        # given
+        self.maxDiff = None
+        et_1 = EveTypeFactory(id=101)
+        et_2 = EveTypeFactory(id=102, enabled_sections=1)  # dogmas
+        et_4 = EveTypeFactory(id=104, enabled_sections=5)  # dogmas & market groups
+
+        # when
+        got = EveType.objects.filter_enabled_sections([])
+
+        # then
+        self.assertCountEqual(got, [et_1, et_2, et_4])
+
+    def test_should_match_all_when_section_not_supported(self):
         # given
         eg = EveGroupFactory()
 

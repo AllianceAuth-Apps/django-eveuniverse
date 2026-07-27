@@ -6,6 +6,7 @@ from http import HTTPStatus
 from typing import Any, Dict, Iterable, List, Optional, Set, Tuple
 
 from django.db import models
+from django.db.models import F
 from django.utils.timezone import now
 from esi.exceptions import HTTPClientError
 
@@ -21,17 +22,29 @@ class EveUniverseEntityModelQuerySet(models.QuerySet):
     def filter_enabled_sections(
         self, enabled_sections: Iterable[str]
     ) -> models.QuerySet:
-        """Return a filter that matches any of the provided sections.
+        """Return a filter that matches objects
+        which have all of the provided sections enabled.
 
-        Sections not valid for the respective model are ignored.
-        If the model does not support sections the filter matches all.
+        If no sections are provided
+        or the model does not support sections the filter matches all.
+        Sections not valid for a model are ignored.
         """
-        params = {
-            "enabled_sections": getattr(self.model.enabled_sections, section)
-            for section in enabled_sections
-            if str(section) in self.model.Section.values()
+        valid_sections = {
+            self.model.Section(s)
+            for s in enabled_sections
+            if str(s) in self.model.Section.values()
         }
-        return self.filter(**params)
+        if not valid_sections:
+            return self.all()
+
+        mask = 0
+        for s in valid_sections:
+            mask |= getattr(self.model.enabled_sections, s)
+
+        qs = self.annotate(masked_flags=F("enabled_sections").bitand(mask)).filter(
+            masked_flags=mask
+        )
+        return qs
 
 
 class EveUniverseEntityModelManagerBase(models.Manager):
