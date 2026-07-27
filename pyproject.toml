@@ -6,7 +6,8 @@ build-backend = "flit_core.buildapi"
 name = "django-eveuniverse"
 dynamic = ["description", "version"]
 readme = "README.md"
-license = { file = "LICENSE" }
+license = "MIT"
+license-files = ["LICENSE*"]
 requires-python = ">=3.10"
 authors = [{ name = "Erik Kalkoken", email = "erik.kalkoken@gmail.com" }]
 classifiers = [
