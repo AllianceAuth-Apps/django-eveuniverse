@@ -330,7 +330,8 @@ class EveUniverseEntityModel(EveUniverseBaseModel):
         self.save()
         return True
 
-    def enabled_sections_values(self) -> Set[_SectionBase]:
+    @property
+    def enabled_sections_set(self) -> Set[_SectionBase]:
         """Return value of `enabled_sections' field as enum values.
 
         Returns empty when the field does not exist.
@@ -338,8 +339,8 @@ class EveUniverseEntityModel(EveUniverseBaseModel):
         if not hasattr(self, "enabled_sections"):
             return set()
 
-        values = {self.Section(flag[0]) for flag in self.enabled_sections if flag[1]}
-        return values
+        flag = {self.Section(flag[0]) for flag in self.enabled_sections if flag[1]}
+        return flag
 
     @classmethod
     def _update_or_create_children(

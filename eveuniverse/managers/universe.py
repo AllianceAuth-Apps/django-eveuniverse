@@ -16,9 +16,16 @@ logger = logging.getLogger(__name__)
 
 
 class EveUniverseEntityModelQuerySet(models.QuerySet):
+    """QuerySets for EveUniverseEntityModel."""
+
     def filter_enabled_sections(
         self, enabled_sections: Iterable[str]
     ) -> models.QuerySet:
+        """Return a filter that matches any of the provided sections.
+
+        Sections not valid for the respective model are ignored.
+        If the model does not support sections the filter matches all.
+        """
         params = {
             "enabled_sections": getattr(self.model.enabled_sections, section)
             for section in enabled_sections

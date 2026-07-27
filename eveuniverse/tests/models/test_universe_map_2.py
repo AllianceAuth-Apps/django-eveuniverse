@@ -87,7 +87,7 @@ class TestEveSolarSystem_Sections(TestCase):
         self.assertEqual(obj.security_status, security_status)
         self.assertEqual(obj.eve_entity_category(), EveEntity.CATEGORY_SOLAR_SYSTEM)
 
-        self.assertSetEqual(obj.enabled_sections_values(), set())
+        self.assertSetEqual(obj.enabled_sections_set, set())
 
     @pook.on
     def test_should_create_from_esi_with_all_sections_full(self):
@@ -243,7 +243,7 @@ class TestEveSolarSystem_Sections(TestCase):
         self.assertEqual(obj.eve_entity_category(), EveEntity.CATEGORY_SOLAR_SYSTEM)
 
         self.assertSetEqual(
-            obj.enabled_sections_values(),
+            obj.enabled_sections_set,
             {
                 EveSolarSystem.Section.PLANETS,
                 EveSolarSystem.Section.STARGATES,
@@ -305,7 +305,7 @@ class TestEveSolarSystem_Sections(TestCase):
         )
         # then
         self.assertEqual(obj.id, solar_system_id)
-        self.assertSetEqual(obj.enabled_sections_values(), set())
+        self.assertSetEqual(obj.enabled_sections_set, set())
 
     @pook.on
     def test_should_create_solar_system_with_planets_and_moons(self):
@@ -371,12 +371,12 @@ class TestEveSolarSystem_Sections(TestCase):
         # then
         self.assertEqual(solar_system.id, solar_system_id)
         self.assertSetEqual(
-            solar_system.enabled_sections_values(), {EveSolarSystem.Section.PLANETS}
+            solar_system.enabled_sections_set, {EveSolarSystem.Section.PLANETS}
         )
         self.assertTrue(solar_system.eve_planets.filter(id=planet_id).exists())
 
         planet: EvePlanet = solar_system.eve_planets.get(id=planet_id)
-        self.assertSetEqual(planet.enabled_sections_values(), {EvePlanet.Section.MOONS})
+        self.assertSetEqual(planet.enabled_sections_set, {EvePlanet.Section.MOONS})
         self.assertTrue(planet.eve_moons.filter(id=moon_id).exists())
 
 
