@@ -458,6 +458,7 @@ class EveStargateManager(EveUniverseEntityModelManager):
         enabled_sections: Optional[Iterable[str]] = None,
         task_priority: Optional[int] = None,
     ) -> Tuple[Any, bool]:
+        # pylint: disable=unused-argument
         """updates or creates an EveStargate object by fetching it from ESI (blocking).
         Will always get/create parent objects
 
@@ -500,6 +501,7 @@ class EveTypeManager(EveUniverseEntityModelManager):
         enabled_sections: Optional[Iterable[str]] = None,
         task_priority: Optional[int] = None,
     ) -> Tuple[Any, bool]:
+        # pylint: disable=missing-function-docstring
         from eveuniverse.models.base import determine_effective_sections
 
         effective_sections = determine_effective_sections(enabled_sections)

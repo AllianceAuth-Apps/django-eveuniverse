@@ -152,21 +152,17 @@ Therefore the following eve models are not loaded through relations By default a
     You can still load objects from disabled models directly - e.g. with ``get_or_create_esi()`` - but be mindful that relations will not be created automatically, which can lead to inconsistencies in your database.
 ```
 
-There are two solutions for loading disabled models incl. their relations:
+Related models that are called "sections" in the API. There are two solutions for loading sections:
 
-- Globally enabling disabled models
-- Enabling disabled models on-demand
+- Globally enabling sections
+- Enabling sections on-demand
 
-```{note}
-Related models that are disabled by default are also called sections.
-```
+#### Globally enabling sections
 
-#### Globally enabling models
-
-One solution here is to offer developers control over which related models are loaded through configuration. Each disabled model therefore as a corresponding setting that can be used to globally enable that model.
+One solution here is to offer developers control over which related models are loaded through configuration. Each section has a corresponding setting that can be used to globally enable that model.
 
 ```{hint}
-    When turning on loading of related models you usually want to reload related eve objects that already exist in the database to make sure all relations are created correctly. e.g. after turning on `EveStargate` you want to reload all solar systems.
+    When globally enabling sections you usually want to reload related eve objects that already exist in the database to make sure all relations are created correctly. e.g. after turning on `EveStargate` you want to reload all solar systems.
 ```
 
 ```{eval-rst}
@@ -176,11 +172,11 @@ One solution here is to offer developers control over which related models are l
 
 (load_related_models_on_demand)=
 
-### Load related models on-demand
+### Fetching sections on-demand
 
-However, globally enabling those related models will affect all apps of a Django installation. For instance if you turn on dogmas globally, dogmas will be loaded for each and every type, even if it that extra data is not needed.
+However, globally enabling sections will affect all apps of a Django installation. For instance if you turn on dogmas globally, dogmas will be loaded for each and every type, even if it that extra data is not needed.
 
-This might not be the best option for some use cases and we are therefore offering an alternative solution. You can also activate disabled models on-demand.
+This might not be the best option for some use cases and so there is an alternative solution. You can also load sections on-demand.
 
 #### Manager methods
 
@@ -203,7 +199,7 @@ obj, _ = EveSolarSystem.objects.get_or_create_esi(id=30000142, include_children=
     See also the API for a list of all available sections for each model that supports it: :py:class:`eveuniverse.models.EvePlanet.Section`, :py:class:`eveuniverse.models.EveSolarSystem.Section`, :py:class:`eveuniverse.models.EveType.Section`.
 ```
 
-#### NON-ESI models
+#### Sections for SDE models
 
 There are several managers which obtain the data from SDE API, since it's not provided by ESI. The related models are:
 
@@ -221,6 +217,25 @@ merlin_blueprint, _ = EveType.objects.get_or_create_esi(id=950)
 EveIndustryActivityMaterials.objects.update_or_create_api(
     eve_type=merlin_blueprint
 )
+```
+
+### Filtering for enabled sections
+
+It is also possible to filter for existing objects that have specific sections enabled by using the `filter_enabled_sections()` queryset method.
+
+For example to only retrieve types which have dogmas loaded.
+
+```py
+qs = EveType.objects.filter_enabled_sections([EveType.Section.DOGMAS])
+```
+
+### Accessing enabled sections for an object
+
+To determine which sections are enabled on an object you can use the `enabled_sections_set` property. It will return a set of the enabled sections. For example:
+
+```py
+obj = EveType.objects.get(id=603) # Merlin
+sections = obj.enabled_sections_set
 ```
 
 #### Test tools
