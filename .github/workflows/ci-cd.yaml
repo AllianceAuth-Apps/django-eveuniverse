@@ -46,9 +46,9 @@ jobs:
     needs: [pre-commit, pylint]
     strategy:
       matrix:
-        esi-version: ["8", "9", "10"]
         python-version: ["10", "11", "12", "13"]
         django-version: ["42", "52", "60"]
+        esi-version: ["8", "9", "10"]
         exclude:
           # Exclude combinations for ESI 8 that shouldn't run
           - esi-version: "8"
